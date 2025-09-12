@@ -27,6 +27,7 @@ from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 from api.db import StatusEnum
 from api.db.db_models import close_connection
 from api.db.services import UserService
+from api.db.services.user_service import UserTenantService
 from api.utils import CustomJSONEncoder, commands
 
 from flask_mail import Mail
@@ -94,6 +95,26 @@ login_manager.init_app(app)
 
 commands.register_commands(app)
 
+# Monkey patch UserTenantService to support API Token users
+_original_user_tenant_query = UserTenantService.query
+
+def patched_user_tenant_query(user_id=None, **kwargs):
+    """
+    增强的UserTenantService.query方法，支持API Token用户
+    """
+    # 如果user_id看起来像tenant_id（32位字符），直接返回模拟的tenant对象
+    if user_id and len(str(user_id)) == 32 and not kwargs:
+        class MockTenant:
+            def __init__(self, tenant_id):
+                self.tenant_id = tenant_id
+                self.user_id = tenant_id
+        return [MockTenant(user_id)]
+
+    # 否则使用原始查询方法
+    return _original_user_tenant_query(user_id=user_id, **kwargs)
+
+UserTenantService.query = patched_user_tenant_query
+
 
 def search_pages_path(pages_dir):
     app_path_list = [
@@ -143,35 +164,62 @@ client_urls_prefix = [
 
 @login_manager.request_loader
 def load_user(web_request):
-    jwt = Serializer(secret_key=settings.SECRET_KEY)
     authorization = web_request.headers.get("Authorization")
-    if authorization:
+    if not authorization:
+        return None
+
+    # 方式1: RESTful API Token鉴权 (Bearer格式)
+    if authorization.startswith("Bearer "):
         try:
-            access_token = str(jwt.loads(authorization))
+            from api.db.db_models import APIToken
 
-            if not access_token or not access_token.strip():
-                logging.warning("Authentication attempt with empty access token")
-                return None
+            authorization_list = authorization.split()
+            if len(authorization_list) >= 2:
+                token = authorization_list[1]
+                objs = APIToken.query(token=token)
+                if objs:
+                    # 创建虚拟用户对象，让现有Web API代码能正常工作
+                    class APITokenUser:
+                        def __init__(self, tenant_id):
+                            self.id = tenant_id  # 直接使用tenant_id作为user.id
+                            self.tenant_id = tenant_id
+                            self.is_authenticated = True
+                            self.is_active = True
+                            self.is_anonymous = False
 
-            # Access tokens should be UUIDs (32 hex characters)
-            if len(access_token.strip()) < 32:
-                logging.warning(f"Authentication attempt with invalid token format: {len(access_token)} chars")
-                return None
+                        def get_id(self):
+                            return self.tenant_id
 
-            user = UserService.query(
-                access_token=access_token, status=StatusEnum.VALID.value
-            )
-            if user:
-                if not user[0].access_token or not user[0].access_token.strip():
-                    logging.warning(f"User {user[0].email} has empty access_token in database")
-                    return None
-                return user[0]
-            else:
-                return None
+                    return APITokenUser(objs[0].tenant_id)
         except Exception as e:
-            logging.warning(f"load_user got exception {e}")
+            logging.warning(f"API token authentication failed: {e}")
+
+    # 方式2: Web Session Token鉴权 (JWT格式)
+    try:
+        jwt = Serializer(secret_key=settings.SECRET_KEY)
+        access_token = str(jwt.loads(authorization))
+
+        if not access_token or not access_token.strip():
+            logging.warning("Authentication attempt with empty access token")
             return None
-    else:
+
+        # Access tokens should be UUIDs (32 hex characters)
+        if len(access_token.strip()) < 32:
+            logging.warning(f"Authentication attempt with invalid token format: {len(access_token)} chars")
+            return None
+
+        user = UserService.query(
+            access_token=access_token, status=StatusEnum.VALID.value
+        )
+        if user:
+            if not user[0].access_token or not user[0].access_token.strip():
+                logging.warning(f"User {user[0].email} has empty access_token in database")
+                return None
+            return user[0]
+        else:
+            return None
+    except Exception as e:
+        logging.warning(f"Session token authentication failed: {e}")
         return None
 
 
