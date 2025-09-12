@@ -106,8 +106,12 @@ def patched_user_tenant_query(user_id=None, **kwargs):
     if user_id and len(str(user_id)) == 32 and not kwargs:
         class MockTenant:
             def __init__(self, tenant_id):
+                self.id = f"mock_user_tenant_{tenant_id}"
                 self.tenant_id = tenant_id
                 self.user_id = tenant_id
+                self.role = "owner"  # API Token用户默认为owner角色
+                self.invited_by = tenant_id
+                self.status = "1"  # 有效状态
         return [MockTenant(user_id)]
 
     # 否则使用原始查询方法
