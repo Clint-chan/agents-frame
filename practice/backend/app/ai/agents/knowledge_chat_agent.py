@@ -59,12 +59,13 @@ class KnowledgeChatAgent:
             }
             
             chunks_data = await self.ragflow_client.retrieve_chunks(message, self.kb_id)
-            knowledge, chunks_metadata = self.ragflow_client.format_chunks_for_llm(chunks_data)
+            knowledge, chunks_metadata, doc_aggs = self.ragflow_client.format_chunks_for_llm(chunks_data)
             
             yield {
                 "type": "chunks",
                 "content": "",
                 "chunks": chunks_metadata,
+                "doc_aggs": doc_aggs,
                 "thread_id": thread_id
             }
             
@@ -93,11 +94,37 @@ class KnowledgeChatAgent:
                     "thread_id": thread_id
                 }
             
-            # 4. 保存对话历史
+            # 4. 获取文档缩略图和构建完整的doc_aggs
+            enhanced_doc_aggs = []
+            if doc_aggs:
+                # 提取所有文档ID
+                doc_ids = [doc["doc_id"] for doc in doc_aggs]
+
+                # 获取缩略图
+                thumbnails = await self.ragflow_client.get_document_thumbnails(doc_ids)
+
+                # 构建增强的doc_aggs
+                for doc in doc_aggs:
+                    doc_id = doc["doc_id"]
+                    doc_name = doc["doc_name"]
+
+                    # 获取文件扩展名
+                    file_extension = doc_name.split('.')[-1].lower() if '.' in doc_name else 'pdf'
+
+                    enhanced_doc = {
+                        "doc_id": doc_id,
+                        "doc_name": doc_name,
+                        "count": doc["count"],
+                        "thumbnail_url": thumbnails.get(doc_id, ""),
+                        "document_url": f"{self.ragflow_client.base_url}/document/{doc_id}?ext={file_extension}&prefix=document"
+                    }
+                    enhanced_doc_aggs.append(enhanced_doc)
+
+            # 5. 保存对话历史
             self.session_manager.add_message(thread_id, "user", message)
             self.session_manager.add_message(thread_id, "assistant", full_response, chunks_metadata)
-            
-            # 5. 发送完成信号
+
+            # 6. 发送完成信号
             yield {
                 "type": "message",
                 "content": {
@@ -105,6 +132,7 @@ class KnowledgeChatAgent:
                     "type": "ai",
                     "content": full_response,
                     "chunks": chunks_metadata,
+                    "doc_aggs": enhanced_doc_aggs,
                     "thread_id": thread_id,
                     "agent_id": self.agent_id
                 }

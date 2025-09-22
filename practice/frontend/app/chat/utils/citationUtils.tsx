@@ -16,14 +16,14 @@ export const processCitations = (content: string, chunks: ChunkInfo[]) => {
     chunkMap.set(chunk.index, chunk);
   });
 
-  // 正则匹配 [数字] 格式的脚注
-  const citationRegex = /\[(\d+)\]/g;
+  // 正则匹配 [ID:数字] 格式的脚注（RAGFlow标准格式）
+  const citationRegex = /\[ID:(\d+)\]/g;
   const parts: (string | React.ReactElement)[] = [];
   let lastIndex = 0;
   let match;
 
   while ((match = citationRegex.exec(content)) !== null) {
-    const fullMatch = match[0]; // [1]
+    const fullMatch = match[0]; // [ID:1]
     const citationNumber = parseInt(match[1]); // 1
     const matchStart = match.index;
     const matchEnd = match.index + fullMatch.length;
@@ -36,18 +36,17 @@ export const processCitations = (content: string, chunks: ChunkInfo[]) => {
     // 查找对应的chunk
     const chunk = chunkMap.get(citationNumber);
     if (chunk) {
-      // 创建可悬停的脚注链接
+      // 创建可悬停的脚注圆点
       parts.push(
         <CitationTooltip key={`citation-${citationNumber}-${matchStart}`} chunk={chunk}>
-          <sup className="citation-link">
-            <a
-              href="#"
-              className="text-blue-600 hover:text-blue-800 no-underline font-medium"
-              onClick={(e) => e.preventDefault()}
-            >
-              [{citationNumber}]
-            </a>
-          </sup>
+          <span
+            className="reference-dot"
+            data-number={citationNumber}
+            data-node-id={chunk.chunk_id}
+            onClick={(e) => e.preventDefault()}
+          >
+            {citationNumber}
+          </span>
         </CitationTooltip>
       );
     } else {
@@ -74,7 +73,7 @@ export const extractCitationSources = (content: string, chunks: ChunkInfo[]) => 
     return [];
   }
 
-  const citationRegex = /\[(\d+)\]/g;
+  const citationRegex = /\[ID:(\d+)\]/g;
   const citedNumbers = new Set<number>();
   let match;
 

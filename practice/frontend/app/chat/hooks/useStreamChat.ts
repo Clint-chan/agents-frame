@@ -104,6 +104,7 @@ export const useStreamChat = ({
                 ...msg,
                 content: content.content,
                 chunks: content.chunks || [],
+                doc_aggs: content.doc_aggs || [],
                 agent_id: content.agent_id,
                 run_id: content.run_id
               }
