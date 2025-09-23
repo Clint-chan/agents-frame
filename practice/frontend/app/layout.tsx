@@ -11,22 +11,28 @@ import { LayoutContext } from "./layout-context";
 import SessionListItem from './components/SessionListItem';
 import AgentSelector from './components/AgentSelector';
 import SiderComponent from './components/SiderComponent';
+import { useRouter } from 'next/navigation';
 
 const { Header, Content } = Layout;
 
   // Since ReactNode may not be imported correctly, use the more generic type 'any' instead
 export default function RootLayout({ children }: { children: any }) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
-  const [sessions, setSessions] = useState(() => {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
     try {
-      return JSON.parse(localStorage.getItem("chatSessions") || "[]");
+      const saved = JSON.parse(localStorage.getItem("chatSessions") || "[]");
+      setSessions(Array.isArray(saved) ? saved : []);
     } catch (e) {
-      return [];
+      setSessions([]);
     }
-  });
+    setMounted(true);
+  }, []);
 
-
-  const [currentThreadId, setCurrentThreadId] = useState(null);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
 
   const [agentId, setAgentId] = useState("knowledge-chat");
 
@@ -44,47 +50,52 @@ export default function RootLayout({ children }: { children: any }) {
   }, []);
 
   const handleAddSession = (newThreadId: string, startMsg: string) => {
-    if (!newThreadId) {
-      newThreadId = uuidv4();
-    }
-    if (!startMsg) {
-      startMsg = `greet ${new Date().toLocaleString()}`;
-    }
+    const id = newThreadId || uuidv4();
+    const title = (startMsg || `greet ${new Date().toLocaleString()}`).substring(0, 30);
     const newSession = {
-      threadId: newThreadId,
-      name: startMsg.substring(0, 10),
+      threadId: id,
+      name: title,
       lastUpdated: Date.now(),
     };
-    // left sider auto select new session
-    setSessions((prev) => [...prev, newSession]);
-    setCurrentThreadId(newThreadId);
-    localStorage.setItem(
-      "chatSessions",
-      JSON.stringify([...sessions, newSession])
-    );
-    window.history.pushState({}, "", `/chat/${newThreadId}`);
+    setSessions((prev) => {
+      const next = [...prev, newSession];
+      localStorage.setItem("chatSessions", JSON.stringify(next));
+      return next;
+    });
+    setCurrentThreadId(id);
+    router.push(`/chat/${id}`);
   };
 
   // delete session
   const handleDeleteSession = (delThreadId: string) => {
-    const newSessions = sessions.filter(
-      (session) => session.threadId !== delThreadId
-    );
+    const newSessions = sessions.filter((session) => session.threadId !== delThreadId);
     setSessions(newSessions);
     localStorage.setItem("chatSessions", JSON.stringify(newSessions));
-    localStorage.removeItem( "chatMessages-" + delThreadId);
-    if(newSessions.length > 0){
-      setCurrentThreadId([...newSessions].reverse()[0]?.threadId || "");
-      window.history.pushState({}, "", `/chat/${currentThreadId}`);
-    }else{
+    localStorage.removeItem("chatMessages-" + delThreadId);
+    if (newSessions.length > 0) {
+      const nextId = [...newSessions].reverse()[0]?.threadId || "";
+      setCurrentThreadId(nextId);
+      router.push(`/chat/${nextId}`);
+    } else {
       setCurrentThreadId(null);
-      window.history.pushState({}, "", "/chat");
+      router.push("/chat");
     }
+  };
+
+  // pin toggle: 置顶 / 取消置顶
+  const handlePinSession = (pinThreadId: string) => {
+    setSessions((prev) => {
+      const next = prev.map((s) =>
+        s.threadId === pinThreadId ? { ...s, pinned: !s.pinned, lastUpdated: Date.now() } : s
+      );
+      localStorage.setItem("chatSessions", JSON.stringify(next));
+      return next;
+    });
   };
 
   const handlerNewChat = () => {
     setCurrentThreadId(null);
-    window.history.pushState({}, "", "/chat");
+    router.push("/chat");
   };
 
   const selectAgent = (value: string) => {
@@ -104,22 +115,24 @@ export default function RootLayout({ children }: { children: any }) {
     });
   }, [sessions]);
 
+  const visibleSessions = mounted ? sessions : [];
+
   return (
     <LayoutContext.Provider value={{ agentId, setAgentId, currentThreadId, setCurrentThreadId }}>
       <html>
-        <body className="min-h-screen">
-          <Layout style={{ minHeight: "auto" }}>
+        <body className="min-h-screen bg-white text-gray-900">
+          <Layout style={{ minHeight: "100vh" }}>
             <SiderComponent
               collapsed={collapsed}
               onCollapse={setCollapsed}
-              sessions={sessions}
+              sessions={visibleSessions}
               handleDeleteSession={handleDeleteSession}
+              handlePinSession={handlePinSession}
               handlerNewChat={handlerNewChat}
               items={items}
               onSelectSession={(key) => {
                 setCurrentThreadId(key);
-                const newPath = `/chat/${key}`;
-                window.history.pushState({}, "", newPath);
+                router.push(`/chat/${key}`);
               }}
             />
             <Layout>
@@ -128,12 +141,8 @@ export default function RootLayout({ children }: { children: any }) {
                   onClick={() => setCollapsed(!collapsed)}
                   className="ml-4 text-xl"
                 />
-                <div className="flex items-center ml-8 flex-none shrink-0">
-                  <span className="text-base">AI-Agent:</span>
-                  <AgentSelector value={agentId} onChange={selectAgent} />
-                </div>
               </Header>
-              <Content className="m-4 p-6 bg-white min-h-[calc(100vh-120px)]">
+              <Content className="m-0 p-0 bg-white">
                   {children}
               </Content>
             </Layout>

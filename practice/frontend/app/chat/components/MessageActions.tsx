@@ -9,10 +9,10 @@ interface MessageActionsProps {
   showRetry?: boolean;
 }
 
-const MessageActions: React.FC<MessageActionsProps> = ({ 
-  content, 
-  onRetry, 
-  showRetry = false 
+const MessageActions: React.FC<MessageActionsProps> = ({
+  content,
+  onRetry,
+  showRetry = false
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -34,14 +34,14 @@ const MessageActions: React.FC<MessageActionsProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 mt-4 pt-3"
-         style={{ borderTop: '1px solid var(--color-border-light)' }}>
-      {/* 复制按钮 - 只显示图标 */}
-      <button
-        onClick={handleCopy}
-        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-        title={copied ? "已复制" : "复制内容"}
-      >
+    <div className="mt-2 pt-2 border-t border-gray-100 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center justify-end gap-1.5">
+        {/* 复制按钮 - 幽灵圆形按钮 */}
+        <button
+          onClick={handleCopy}
+          className="h-8 w-8 inline-flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+          title={copied ? "已复制" : "复制内容"}
+        >
         {copied ? (
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -53,11 +53,13 @@ const MessageActions: React.FC<MessageActionsProps> = ({
         )}
       </button>
 
-      {/* 重试按钮 - 只显示图标 */}
+      </div>
+
+      {/* 重试按钮 - 幽灵圆形按钮 */}
       {showRetry && (
         <button
           onClick={handleRetry}
-          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+          className="h-8 w-8 inline-flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
           title="重新生成"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" className="w-4 h-4">

@@ -153,30 +153,33 @@ def start_backend(port=8000, host="0.0.0.0"):
         return None
 
 
-def start_frontend(port=3000):
-    """启动前端服务"""
+def start_frontend(port=3000, backend_base_url="http://localhost:8000"):
+    """启动前端服务（Next.js 15）
+    会自动设置 NEXT_PUBLIC_API_BASE_URL，供前端通过 /api 代理或直连使用
+    """
     print(f"\n🌐 启动前端服务 (http://localhost:{port})...")
-    
+    print(f"🔧 NEXT_PUBLIC_API_BASE_URL = {backend_base_url}")
+
     try:
         # 查找npm命令
         npm_cmd = find_npm_command()
         if not npm_cmd:
             print("❌ 找不到npm命令，请安装Node.js")
             return None
-        
+
         print(f"🔍 使用npm: {npm_cmd}")
-        
+
         # 检查前端目录是否存在
         if not FRONTEND_DIR.exists():
             print(f"❌ 前端目录不存在: {FRONTEND_DIR}")
             return None
-        
+
         # 检查package.json是否存在
         package_json = FRONTEND_DIR / "package.json"
         if not package_json.exists():
             print(f"❌ package.json不存在: {package_json}")
             return None
-        
+
         # 检查是否已安装依赖
         node_modules = FRONTEND_DIR / "node_modules"
         if not node_modules.exists():
@@ -186,22 +189,26 @@ def start_frontend(port=3000):
             if result.returncode != 0:
                 print("❌ 前端依赖安装失败")
                 return None
-        
-        # 启动前端服务
+
+        # 启动前端服务（设置必要的环境变量）
+        env = os.environ.copy()
+        env["NEXT_TELEMETRY_DISABLED"] = "1"
+        env["NEXT_PUBLIC_API_BASE_URL"] = backend_base_url
+
         cmd = [npm_cmd, "run", "dev", "--", "--port", str(port)]
-        
+
         print(f"📝 执行命令: {' '.join(cmd)}")
         print(f"📁 工作目录: {FRONTEND_DIR}")
-        
-        process = subprocess.Popen(cmd, cwd=FRONTEND_DIR, shell=True)
+
+        process = subprocess.Popen(cmd, cwd=FRONTEND_DIR, shell=True, env=env)
         return process
-        
+
     except Exception as e:
         print(f"❌ 启动前端服务失败: {e}")
         return None
 
 
-def start_fullstack():
+def start_fullstack(backend_port=8000, host="0.0.0.0", frontend_port=3000):
     """启动全栈服务"""
     print("\n🚀 启动全栈服务...")
     
@@ -209,7 +216,7 @@ def start_fullstack():
     
     try:
         # 启动后端
-        backend_process = start_backend()
+        backend_process = start_backend(port=backend_port, host=host)
         if backend_process:
             processes.append(("backend", backend_process))
             print("✅ 后端服务启动成功")
@@ -222,7 +229,7 @@ def start_fullstack():
         time.sleep(3)
         
         # 启动前端
-        frontend_process = start_frontend()
+        frontend_process = start_frontend(port=frontend_port, backend_base_url=f"http://localhost:{backend_port}")
         if frontend_process:
             processes.append(("frontend", frontend_process))
             print("✅ 前端服务启动成功")
@@ -234,9 +241,9 @@ def start_fullstack():
         
         print("\n🎉 全栈服务启动完成！")
         print("📊 服务状态:")
-        print("  - 后端API: http://localhost:8000")
-        print("  - 前端界面: http://localhost:3000")
-        print("  - API文档: http://localhost:8000/docs")
+        print(f"  - 后端API: http://localhost:{backend_port}")
+        print(f"  - 前端界面: http://localhost:{frontend_port}")
+        print(f"  - API文档: http://localhost:{backend_port}/docs")
         print("\n按 Ctrl+C 停止所有服务")
         
         # 等待用户中断
@@ -369,7 +376,7 @@ def main():
             print("\n❌ 后端服务启动失败")
         
     elif args.mode == "frontend":
-        process = start_frontend(args.frontend_port)
+        process = start_frontend(args.frontend_port, backend_base_url=f"http://localhost:{args.backend_port}")
         if process:
             try:
                 process.wait()
@@ -380,7 +387,7 @@ def main():
             print("\n❌ 前端服务启动失败")
         
     elif args.mode == "fullstack":
-        start_fullstack()
+        start_fullstack(args.backend_port, args.host, args.frontend_port)
     
     print("\n👋 启动脚本执行完成")
 

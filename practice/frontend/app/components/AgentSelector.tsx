@@ -13,7 +13,7 @@ const AgentSelector: React.FC<AgentSelectorProps> = ({ value, onChange }) => {
   useEffect(() => {
     const fetchAgents = async () => {
       try {
-        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/chat/agents`);
+        const resp = await fetch(`/api/agents`);
         const data = await resp.json();
         if (data?.code === 200 && Array.isArray(data?.data?.agents)) {
           const opts = data.data.agents.map((a: any) => ({ value: a.id || a.agent_id, label: a.name || a.title || a.id }));

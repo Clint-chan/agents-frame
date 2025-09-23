@@ -12,8 +12,8 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
   const [isVisible, setIsVisible] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0, placement: 'top' });
-  const showTimeoutRef = useRef<NodeJS.Timeout>();
-  const hideTimeoutRef = useRef<NodeJS.Timeout>();
+  const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const calculatePosition = useCallback((rect: DOMRect) => {
     const tooltipHeight = 280;
