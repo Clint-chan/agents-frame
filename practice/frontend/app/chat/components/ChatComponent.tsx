@@ -21,6 +21,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [animating, setAnimating] = useState(false);
+  const pendingNavigateThreadRef = useRef<string | null>(null);
   const { agentId, setAgentId, currentThreadId, setCurrentThreadId } = useLayoutContext()
   const router = useRouter();
 
@@ -66,7 +67,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   useEffect(() => {
     console.log("currentThreadId", currentThreadId);
-    if(!currentThreadId || currentThreadId === "") {
+    if (!currentThreadId || currentThreadId === "") {
       handleNewChat();
       return;
     }
@@ -76,9 +77,13 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     if (storedMessages) {
       setMessages(JSON.parse(storedMessages));
     } else {
-      setMessages([]);
+      // 关键修复：新建会话首条提问时，正在流式渲染（isStreaming=true），
+      // 不要把刚插入的占位 AI 消息清空，否则后续 token 无处追加，导致首条回复空白。
+      if (!isStreaming) {
+        setMessages([]);
+      }
     }
-  }, [currentThreadId]);
+  }, [currentThreadId, isStreaming]);
   // 切换会话时触发淡入上移动画
   useEffect(() => {
     if (!currentThreadId) return;
@@ -110,10 +115,10 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       const newId = uuidv4();
       setCurrentThreadId(newId);
       window.dispatchEvent(new CustomEvent("add-session", { detail: { threadId: newId, msg: text } }));
+      // 关键修复：先记录待导航的线程ID，等流式结束后再 push，避免打断
+      pendingNavigateThreadRef.current = newId;
       setIsStreaming(true);
       await handleStream(text, newId);
-      // 流式完成后再更新URL，避免刷新打断首条渲染
-      router.push(`/chat/${newId}`);
       return;
     }
 
@@ -121,13 +126,37 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     await handleStream(text);
   };
 
+	  const handleEditMessage = async (messageId: string, text: string) => {
+	    // 改为“基于编辑内容再发一条新消息并触发大模型回复”，不修改原消息
+	    await handleStream(text);
+	  };
+
+
   return (
-    <div className="overscroll-behavior-contain relative flex h-[calc(100vh-64px)] flex-col bg-white text-[15px]">
-      {/* 消息容器：对齐 Chat SDK 结构 */}
+    <div className="relative flex h-[calc(100vh-64px)] flex-col bg-white text-[15px]">
+      {/* 主聊天区顶部工具栏（可扩展，元素自动垂直居中） */}
+      <header className="sticky top-0 z-10 flex h-12 items-center gap-2 bg-white px-2">
+        <button
+          data-testid="sidebar-toggle-button"
+          onClick={() => { try { window.dispatchEvent(new Event('toggle-sider')); } catch {} }}
+          className="inline-flex h-8 px-2 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+          title="Toggle sidebar"
+          aria-label="Toggle sidebar"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        {/* 预留更多按钮位 */}
+      </header>
+
+      {/* 聊天记录区域：内部滚动，固定高度 */}
       <div
-        className="-webkit-overflow-scrolling-touch flex-1 touch-pan-y overflow-y-auto"
+        className="rf-scroll flex-1 overflow-y-auto"
         ref={containerRef}
-        style={{ overflowAnchor: 'none' }}
+        style={{
+          overflowAnchor: 'none',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#d1d5db #f9fafb'
+        }}
       >
         <div className={`chat-content-container ${animating ? 'is-loading-new-chat' : ''} mx-auto flex min-w-0 max-w-4xl flex-col gap-3 md:gap-4`}>
           <div className="flex flex-col gap-3 px-3 py-2 md:gap-4 md:px-4 md:py-3">
@@ -142,7 +171,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
               </>
             )}
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} isStreaming={isStreaming} />
+              <MessageBubble key={msg.id} message={msg} isStreaming={isStreaming} onEdit={handleEditMessage} />
             ))}
             <div className="min-h-2 min-w-2 shrink-0" ref={messagesEndRef} />
           </div>
@@ -164,7 +193,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       {/* 吸底输入区 */}
       {messages.length === 0 && (
         <div className="bg-white">
-          <div className="mx-auto max-w-4xl px-3 py-3 md:px-4">
+          <div className="mx-auto w-[838px] max-w-full px-0 py-3">
             <div className="grid grid-cols-2 gap-2">
               {[
                 'Summarize this document',
@@ -186,7 +215,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 bg-white">
+      <div className="sticky bottom-0 z-10 bg-white -mb-8">
         <MessageInput
           input={input}
           setInput={setInput}
@@ -197,5 +226,9 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     </div>
   );
 };
+
+
+
+
 
 export default ChatComponent;

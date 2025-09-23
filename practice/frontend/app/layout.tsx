@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import "@ant-design/v5-patch-for-react-19";
+
 import { Layout, Menu, Button, Select } from "antd";
 import { useState, useEffect, useRef } from "react";
 import { BarsOutlined, PlusOutlined } from "@ant-design/icons";
@@ -30,6 +32,12 @@ export default function RootLayout({ children }: { children: any }) {
       setSessions([]);
     }
     setMounted(true);
+
+    const onToggle = () => setCollapsed((prev) => !prev);
+    window.addEventListener('toggle-sider', onToggle as EventListener);
+    return () => {
+      window.removeEventListener('toggle-sider', onToggle as EventListener);
+    };
   }, []);
 
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
@@ -63,7 +71,8 @@ export default function RootLayout({ children }: { children: any }) {
       return next;
     });
     setCurrentThreadId(id);
-    router.push(`/chat/${id}`);
+    // 延后导航：由 ChatComponent 首条消息流式结束后再 push，避免打断首条渲染
+    // router.push(`/chat/${id}`);
   };
 
   // delete session
@@ -136,12 +145,7 @@ export default function RootLayout({ children }: { children: any }) {
               }}
             />
             <Layout>
-              <Header className="bg-white p-0 flex flex-nowrap">
-                <BarsOutlined
-                  onClick={() => setCollapsed(!collapsed)}
-                  className="ml-4 text-xl"
-                />
-              </Header>
+              <Header className="bg-transparent p-0" style={{ height: 0, lineHeight: 0, padding: 0, borderBottom: 'none' }} />
               <Content className="m-0 p-0 bg-white">
                   {children}
               </Content>

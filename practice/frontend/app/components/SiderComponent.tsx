@@ -32,6 +32,12 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [agentOptions, setAgentOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [query, setQuery] = useState('')
+  const [guestOpen, setGuestOpen] = useState(false)
+  const q = query.trim().toLowerCase()
+  const filteredAgents = q ? agentOptions.filter(a => a.name.toLowerCase().includes(q)) : agentOptions
+  const filteredPinned = q ? sessions.filter((s:any)=> s.pinned && (s.name||'').toLowerCase().includes(q)) : sessions.filter((s:any)=> s.pinned)
+  const filteredUnpinned = q ? sessions.filter((s:any)=> !s.pinned && (s.name||'').toLowerCase().includes(q)) : sessions.filter((s:any)=> !s.pinned)
 
   useEffect(() => {
     const loadAgents = async () => {
@@ -59,14 +65,16 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
       collapsedWidth={0}
       style={{ background: '#fafafa', borderRight: collapsed ? 'none' : '1px solid #e5e7eb' }}
     >
-      <div className="flex h-full flex-col">
+      <div className="group relative flex h-screen flex-col">
 
       {!collapsed && (
-        <div className="flex items-center justify-between h-12 px-3">
-          <div className="text-[15px] font-semibold tracking-tight text-gray-900">Chatbot</div>
+        <div className="flex h-12 items-center justify-between px-3">
+          <a href="/" className="flex flex-row items-center gap-3">
+            <span className="cursor-pointer rounded-md px-2 text-lg font-semibold text-gray-900 hover:bg-gray-100">Chatbot</span>
+          </a>
           <button
             onClick={handlerNewChat}
-            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             title="New chat"
             aria-label="New chat"
           >
@@ -75,12 +83,32 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
         </div>
       )}
 
-      {/* Agents list */}
-      {!collapsed && (
+
+
+      {/* 滚动容器：内部滚动，固定高度 */}
+      <div className="rf-scroll rf-hover-scroll flex-1 overflow-y-auto min-h-0">
+        {/* 搜索框：过滤 agents 和 对话 */}
+        <div className="px-3 pb-2">
+          <div className="relative">
+            <input
+              value={query}
+              onChange={(e)=>setQuery(e.target.value)}
+              placeholder="搜索 agent 或对话"
+              className="w-full h-8 rounded-md border border-gray-200 bg-white pl-8 pr-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-gray-300"
+              aria-label="搜索"
+            />
+            <span className="pointer-events-none absolute left-2 top-1.5 text-gray-400" aria-hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </span>
+          </div>
+        </div>
+
+
+        {/* Agents list */}
         <div className="px-3 py-2">
           <div className="text-xs text-gray-400 mb-1">Agents</div>
           <div className="flex flex-col gap-1">
-            {agentOptions.map((a) => (
+            {filteredAgents.map((a) => (
               <button
                 key={a.id}
                 onClick={() => { setAgentId(a.id); handlerNewChat(); }}
@@ -92,17 +120,14 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
             ))}
           </div>
         </div>
-      )}
-
-
       {!collapsed && (
         <>
           {/* Pinned Section */}
-          {sessions.some((s: any) => s.pinned) && (
+          {filteredPinned.length > 0 && (
             <>
               <div className="px-3 py-2"><div className="text-xs text-gray-400">置顶</div></div>
               <div className="px-2">
-                {[...sessions].filter((s: any) => s.pinned).map((s) => (
+                {filteredPinned.map((s) => (
                   <div
                     key={s.threadId}
                     onClick={() => { setOpenMenuId(null); onSelectSession(s.threadId); }}
@@ -111,6 +136,7 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
                     <span className={`truncate ${currentThreadId===s.threadId ? 'text-gray-900 font-medium' : 'text-gray-800'}`}>{s.name}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === s.threadId ? null : s.threadId); }}
+
                       className={`${currentThreadId===s.threadId ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600`}
                       title="更多"
                       aria-haspopup="menu"
@@ -150,8 +176,8 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
 
           {/* Today Section */}
           <div className="px-3 py-2"><div className="text-xs text-gray-400">Today</div></div>
-          <div className="px-2 pb-3 flex-1 overflow-y-auto">
-            {[...sessions].filter((s: any) => !s.pinned).reverse().map((s) => (
+          <div className="px-2 pb-3">
+            {[...filteredUnpinned].reverse().map((s) => (
               <div
                 key={s.threadId}
                 onClick={() => { setOpenMenuId(null); onSelectSession(s.threadId); }}
@@ -197,17 +223,39 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
           </div>
         </>
       )}
+      </div>
 
       {!collapsed && (
-        <div className="mt-auto">
+        <div className="mt-auto opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <div className="flex flex-col gap-2 p-2" data-sidebar="footer">
             <ul className="flex w-full min-w-0 flex-col gap-1" data-sidebar="menu">
               <li className="relative" data-sidebar="menu-item">
-                <button type="button" data-sidebar="menu-button" className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm h-10 hover:bg-gray-100">
+                <button
+                  type="button"
+                  data-sidebar="menu-button"
+                  onClick={() => setGuestOpen((v)=>!v)}
+                  className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm h-10 hover:bg-gray-100"
+                >
                   <img alt="guest" width="24" height="24" className="rounded-full" src="https://avatar.vercel.sh/guest" />
                   <span className="truncate">Guest</span>
-                  <UpOutlined className="ml-auto text-gray-400" />
+                  <span className="ml-auto text-gray-500" aria-hidden>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m18 15-6-6-6 6"></path>
+                    </svg>
+                  </span>
                 </button>
+                {guestOpen && (
+                  <div className="absolute bottom-12 right-2 z-10 w-40 rounded-md border border-gray-200 bg-white p-1 shadow-md">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setGuestOpen(false)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+                      <span>Dark Mode</span>
+                    </button>
+                  </div>
+                )}
               </li>
             </ul>
           </div>
@@ -215,6 +263,15 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
       )}
 
       </div>
+
+      <style jsx global>{`
+        .rf-hover-scroll { scrollbar-width: none !important; -ms-overflow-style: none; }
+        .rf-hover-scroll:hover { scrollbar-width: thin !important; }
+        .rf-hover-scroll::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
+        .rf-hover-scroll:hover::-webkit-scrollbar { width: 6px !important; height: 6px !important; }
+        .rf-hover-scroll::-webkit-scrollbar-track { background: transparent; }
+        .rf-hover-scroll:hover::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
+      `}</style>
 
     </Sider>
   );

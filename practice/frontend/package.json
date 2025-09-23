@@ -12,6 +12,7 @@
     "@ai-sdk/provider": "^2.0.0",
     "@ai-sdk/react": "^2.0.26",
     "@ant-design/icons": "^5.2.6",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "ai": "^5.0.26",
     "antd": "^5.13.6",
     "next": "^15.3.0-canary.31",
