@@ -158,7 +158,7 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
                   <div
                     key={s.threadId}
                     onClick={() => { setOpenMenuId(null); onSelectSession(s.threadId); }}
-                    className={`relative group flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer hover:bg-gray-50 ${currentThreadId===s.threadId ? 'bg-white ring-1 ring-gray-200 shadow-sm' : ''}`}
+                    className={`relative group flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer hover:bg-white hover:shadow-sm transition-shadow ${currentThreadId===s.threadId ? 'bg-white ring-1 ring-gray-200 shadow-sm' : ''}`}
                   >
                     <span className={`truncate ${currentThreadId===s.threadId ? 'text-gray-900 font-medium' : 'text-gray-800'}`}>{s.name}</span>
                     <button
@@ -210,7 +210,7 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
                   <div
                     key={s.threadId}
                     onClick={() => { setOpenMenuId(null); onSelectSession(s.threadId); }}
-                    className={`relative group flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer hover:bg-gray-50 ${currentThreadId===s.threadId ? 'bg-white ring-1 ring-gray-200 shadow-sm' : ''}`}
+                    className={`relative group flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer hover:bg-white hover:shadow-sm transition-shadow ${currentThreadId===s.threadId ? 'bg-white ring-1 ring-gray-200 shadow-sm' : ''}`}
                   >
                     <span className={`truncate ${currentThreadId===s.threadId ? 'text-gray-900 font-medium' : 'text-gray-800'}`}>{s.name}</span>
                     <button

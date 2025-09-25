@@ -3,14 +3,13 @@ RAGFlow API客户端封装
 基于官方RESTful API文档实现
 """
 import aiohttp
-import asyncio
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from core.config import settings, RETRIEVAL_CONFIG
 
 
 class RAGFlowClient:
     """RAGFlow RESTful API客户端"""
-    
+
     def __init__(self, api_key: str = settings.RAGFLOW_API_KEY, base_url: str = settings.RAGFLOW_BASE_URL):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
@@ -18,14 +17,14 @@ class RAGFlowClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-    
+
     async def retrieve_chunks(self, question: str, kb_id: str, **kwargs) -> Dict[str, Any]:
         """
         检索知识库chunks
         基于官方文档 POST /api/v1/retrieval
         """
         url = f"{self.base_url}/api/v1/retrieval"
-        
+
         # 合并默认配置和自定义参数
         payload = {
             "question": question,
@@ -33,7 +32,7 @@ class RAGFlowClient:
             **RETRIEVAL_CONFIG,
             **kwargs
         }
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=self.headers, json=payload, timeout=30) as response:
@@ -41,14 +40,14 @@ class RAGFlowClient:
                     return await response.json()
         except aiohttp.ClientError as e:
             raise Exception(f"RAGFlow检索请求失败: {e}")
-    
+
     async def get_document_image(self, image_id: str) -> bytes:
         """
         获取文档图片
         基于官方文档 GET /v1/document/image/{image_id}
         """
         url = f"{self.base_url}/v1/document/image/{image_id}"
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=self.headers, timeout=30) as response:
@@ -56,7 +55,7 @@ class RAGFlowClient:
                     return await response.read()
         except aiohttp.ClientError as e:
             raise Exception(f"获取图片失败: {e}")
-    
+
     async def get_document_thumbnails(self, doc_ids: List[str]) -> Dict[str, str]:
         """获取文档缩略图"""
         if not doc_ids:
@@ -81,6 +80,8 @@ class RAGFlowClient:
 
         return {}
 
+
+
     def format_chunks_for_llm(self, chunks_data: Dict[str, Any]) -> tuple[str, List[Dict], List[Dict]]:
         """
         格式化chunks数据供LLM使用
@@ -91,6 +92,9 @@ class RAGFlowClient:
 
         chunks = chunks_data["data"]["chunks"]
         doc_aggs = chunks_data["data"].get("doc_aggs", [])
+        # 建立 doc_id -> doc_name 的映射，兜底文档名
+        doc_name_map = {d.get("doc_id"): d.get("doc_name") for d in (doc_aggs or [])}
+
         formatted_knowledge = ""
         chunks_metadata = []
 
@@ -98,17 +102,48 @@ class RAGFlowClient:
             # 为LLM格式化的知识库内容，使用RAGFlow标准格式
             formatted_knowledge += f"[ID:{i}] {chunk.get('content', '')}\n\n"
 
-            # 保存chunks元数据供前端使用
+            # 字段兼容：不同接口字段名不一致
+            doc_id = chunk.get("document_id") or chunk.get("doc_id") or ""
+            # 优先级：document_name > document_keyword > docnm_kwd > doc_aggs 映射 > doc_name > ""
+            doc_name = (
+                chunk.get("document_name")
+                or chunk.get("document_keyword")
+                or chunk.get("docnm_kwd")
+                or doc_name_map.get(doc_id)
+                or chunk.get("doc_name")
+                or ""
+            )
+
+            positions = chunk.get("positions", [])
+            page_num_list = chunk.get("page_num_int")
+            page_num = None
+            if isinstance(page_num_list, list) and page_num_list:
+                # REST/Web可能返回 page_num_int: [6,6,...]
+                try:
+                    page_num = int(page_num_list[0])
+                except Exception:
+                    page_num = None
+            # 从 positions 兜底推断页码：[[page,x1,x2,y1,y2], ...]
+            if page_num is None and isinstance(positions, list) and positions and isinstance(positions[0], (list, tuple)):
+                try:
+                    page_num = int(positions[0][0])
+                except Exception:
+                    page_num = None
+
             chunk_meta = {
                 "index": i,
                 "chunk_id": chunk.get("id", ""),
                 "content": chunk.get("content", ""),
-                "document_id": chunk.get("document_id", ""),
-                "document_name": chunk.get("document_name", "") or chunk.get("docnm_kwd", ""),
+                "document_id": doc_id,
+                "document_name": doc_name,
                 "image_id": chunk.get("image_id", ""),
-                "positions": chunk.get("positions", []),
-                "similarity": chunk.get("similarity", 0.0)
+                "positions": positions,
+                "similarity": chunk.get("similarity", 0.0),
             }
+            if page_num is not None:
+                # 兼容前端 Tooltip 取第一个值
+                chunk_meta["page_num_int"] = [page_num]
+
             chunks_metadata.append(chunk_meta)
 
         return formatted_knowledge.strip(), chunks_metadata, doc_aggs

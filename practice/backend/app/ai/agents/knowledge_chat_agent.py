@@ -18,7 +18,7 @@ class KnowledgeChatAgent:
 
     def __init__(self, kb_id: str = None):
         self.agent_id = "knowledge-chat"
-        self.agent_name = "知识库聊天助手"
+        self.agent_name = "知识库问答助手"
         self.kb_id = kb_id or self.KB_ID
         self.ragflow_client = RAGFlowClient()
         self.llm_client = LLMClient()
@@ -60,7 +60,7 @@ class KnowledgeChatAgent:
             
             chunks_data = await self.ragflow_client.retrieve_chunks(message, self.kb_id)
             knowledge, chunks_metadata, doc_aggs = self.ragflow_client.format_chunks_for_llm(chunks_data)
-            
+
             yield {
                 "type": "chunks",
                 "content": "",
@@ -68,7 +68,7 @@ class KnowledgeChatAgent:
                 "doc_aggs": doc_aggs,
                 "thread_id": thread_id
             }
-            
+
             # 2. 获取聊天历史
             chat_history = self.session_manager.get_chat_history(thread_id, max_turns=5)
             
@@ -176,7 +176,7 @@ class KnowledgeChatAgent:
             # 1. 从RAGFlow检索相关chunks
             chunks_data = await self.ragflow_client.retrieve_chunks(message, self.kb_id)
             knowledge, chunks_metadata = self.ragflow_client.format_chunks_for_llm(chunks_data)
-            
+
             # 2. 获取聊天历史
             chat_history = self.session_manager.get_chat_history(thread_id, max_turns=5)
             

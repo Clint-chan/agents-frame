@@ -7,10 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Message } from '../types/chat.types';
-import { extractCitationSources } from '../utils/citationUtils';
 import CitationTooltip from './CitationTooltip';
-import CitationSources from './CitationSources';
-import DocumentReferences from './DocumentReferences';
 
 
 
@@ -74,10 +71,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
     return text.replace(/([^\n])\n(?!\n)/g, '$1  \n');
   }, [content]);
 
-  // 提取引用来源（用于无 doc_aggs 时的来源列表）
-  const citationSources = type === 'ai' && chunks
-    ? extractCitationSources(content, chunks)
-    : [];
+  
 
 
   return (
@@ -181,16 +175,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
                     </ReactMarkdown>
                   </div>
 
-                  {doc_aggs && doc_aggs.length > 0 ? (
-                    <DocumentReferences docAggs={doc_aggs} />
-                  ) : (
-                    <CitationSources sources={citationSources} />
-                  )}
+                  
                 </>
               )}
             </div>
           ) : (
-            <div className="mx-auto w-[838px] max-w-full rounded-xl border border-gray-300 bg-white p-3 focus-within:ring-2 focus-within:ring-gray-200">
+            <div className="mx-auto w-[838px] max-w-full rounded-xl border border-gray-300 bg-white p-3 focus-within:ring-2 focus-within:ring-gray-200 rf-expand">
               <textarea
                 ref={editRef}
                 className="w-full resize-none bg-transparent text-[15px] leading-6 text-gray-900 outline-none py-1.5"
@@ -262,3 +252,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
 };
 
 export default MessageBubble;
+
+/* Minimal expand animation for edit box */
+<style jsx global>{`
+  .rf-expand { animation: rfScaleIn 160ms ease-out; transform-origin: top; }
+  @keyframes rfScaleIn { from { opacity: 0; transform: scaleY(0.98); } to { opacity: 1; transform: scaleY(1); } }
+`}</style>

@@ -29,6 +29,7 @@ export interface ChunkInfo {
   image_id?: string;
   positions: any[];
   similarity: number;
+  page_num_int?: number[]; // optional: pages for this chunk, take first for display/jump
 }
 
 // Chat component props
