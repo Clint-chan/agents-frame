@@ -14,6 +14,56 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
   const [position, setPosition] = useState({ x: 0, y: 0, placement: 'top' });
   const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  const adjustPositionWithRealSize = useCallback((anchor: DOMRect, tip: DOMRect) => {
+    const margin = 16;
+    const w = Math.min(tip.width || 720, window.innerWidth - margin * 2);
+    const h = Math.min(tip.height || 280, window.innerHeight - margin * 2);
+
+    const centerX = anchor.left + anchor.width / 2;
+    const centerY = anchor.top + anchor.height / 2;
+
+    const spaceAbove = anchor.top;
+    const spaceBelow = window.innerHeight - anchor.bottom;
+    const spaceLeft = anchor.left;
+    const spaceRight = window.innerWidth - anchor.right;
+
+    let placement: 'top' | 'bottom' | 'left' | 'right' = 'top';
+    if (spaceAbove >= h + margin) placement = 'top';
+    else if (spaceBelow >= h + margin) placement = 'bottom';
+    else if (spaceRight >= w + margin) placement = 'right';
+    else if (spaceLeft >= w + margin) placement = 'left';
+    else placement = spaceBelow >= spaceAbove ? 'bottom' : 'top';
+
+    let x = centerX;
+    let y = centerY;
+
+    if (placement === 'top') {
+      x = centerX;
+      y = anchor.top - margin;
+      if (x - w / 2 < margin) x = w / 2 + margin;
+      if (x + w / 2 > window.innerWidth - margin) x = window.innerWidth - w / 2 - margin;
+    } else if (placement === 'bottom') {
+      x = centerX;
+      y = anchor.bottom + margin;
+      if (x - w / 2 < margin) x = w / 2 + margin;
+      if (x + w / 2 > window.innerWidth - margin) x = window.innerWidth - w / 2 - margin;
+    } else if (placement === 'left') {
+      x = anchor.left - margin;
+      y = centerY;
+      if (y - h / 2 < margin) y = h / 2 + margin;
+      if (y + h / 2 > window.innerHeight - margin) y = window.innerHeight - h / 2 - margin;
+    } else if (placement === 'right') {
+      x = anchor.right + margin;
+      y = centerY;
+      if (y - h / 2 < margin) y = h / 2 + margin;
+      if (y + h / 2 > window.innerHeight - margin) y = window.innerHeight - h / 2 - margin;
+    }
+
+    return { x, y, placement };
+  }, []);
+
 
   const calculatePosition = useCallback((rect: DOMRect) => {
     const tooltipHeight = 280;
@@ -75,6 +125,14 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
       const pos = calculatePosition(rect);
       setPosition(pos);
       setIsVisible(true);
+      // 下一帧基于真实尺寸再校正一次，避免向上弹出时越界
+      requestAnimationFrame(() => {
+        if (tooltipRef.current) {
+          const tipRect = tooltipRef.current.getBoundingClientRect();
+          const adjusted = adjustPositionWithRealSize(rect, tipRect);
+          setPosition(adjusted);
+        }
+      });
     }, 200);
   }, [calculatePosition]);
 
@@ -98,10 +156,13 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
 
       {isVisible && (
         <div
-          className="reference-tooltip fixed z-50 p-4 bg-white rounded-xl shadow-2xl border border-gray-100 max-w-[720px] w-[720px] max-h-[70vh] overflow-auto"
+          ref={tooltipRef}
+          data-placement={position.placement}
+          className={`reference-tooltip fixed z-50 p-4 bg-white rounded-xl shadow-2xl border border-gray-100 max-w-[720px] w-[720px] max-h-[70vh] overflow-auto ${position.placement === 'top' ? 'rf-anim-top' : position.placement === 'bottom' ? 'rf-anim-bottom' : position.placement === 'left' ? 'rf-anim-left' : 'rf-anim-right'}`}
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
+            willChange: 'transform, opacity',
             transform:
               position.placement === 'top'
                 ? 'translate(-50%, -100%)'
@@ -142,7 +203,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
           </div>
 
           {/* 智能箭头 */}
-          <div className={`reference-tooltip-arrow ${position.placement} left-1/2 transform -translate-x-1/2`} />
+          <div className={`reference-tooltip-arrow ${position.placement}`} />
         </div>
       )}
 
@@ -182,6 +243,18 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
           user-select: none;
         }
         .reference-dot:hover { background: #e0e7ff; }
+
+        /* Tooltip 入场动画（避免 transform 冲突，仅做透明度动画） */
+        .rf-anim-top, .rf-anim-bottom, .rf-anim-left, .rf-anim-right { animation: rfFadeIn 140ms ease-out; }
+        @keyframes rfFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 箭头样式（根据方向自动定位） */
+        .reference-tooltip { position: fixed; }
+        .reference-tooltip-arrow { position: absolute; width: 0; height: 0; }
+        .reference-tooltip-arrow.top { bottom: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid #ffffff; filter: drop-shadow(0 -1px 0 rgba(0,0,0,0.06)); }
+        .reference-tooltip-arrow.bottom { top: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid #ffffff; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.06)); }
+        .reference-tooltip-arrow.left { right: -8px; top: 50%; transform: translateY(-50%); border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 8px solid #ffffff; filter: drop-shadow(-1px 0 0 rgba(0,0,0,0.06)); }
+        .reference-tooltip-arrow.right { left: -8px; top: 50%; transform: translateY(-50%); border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-right: 8px solid #ffffff; filter: drop-shadow(1px 0 0 rgba(0,0,0,0.06)); }
       `}</style>
 
     </>
