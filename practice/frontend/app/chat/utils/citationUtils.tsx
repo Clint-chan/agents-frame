@@ -17,7 +17,7 @@ export const processCitations = (content: string, chunks: ChunkInfo[]) => {
   });
 
   // 正则匹配 [ID:数字] 格式的脚注（RAGFlow标准格式）
-  const citationRegex = /\[ID:(\d+)\]/g;
+  const citationRegex = /\[(?:ID|Id|id)\s*[:：]\s*(\d+)\]/g;
   const parts: (string | React.ReactElement)[] = [];
   let lastIndex = 0;
   let match;
@@ -83,5 +83,5 @@ export const extractCitationSources = (content: string, chunks: ChunkInfo[]) => 
   }
 
   // 返回被引用的chunks
-  return chunks.filter(chunk => citedNumbers.has(chunk.index));
+  return chunks.filter(chunk => citedNumbers.has(Number(chunk.index)));
 };

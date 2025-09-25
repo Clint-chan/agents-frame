@@ -222,3 +222,11 @@ html, body {
 .fade-in-up { animation: contentFadeInUp 0.4s ease-out forwards; }
 .fade-in-up.delay-1 { animation-delay: 0.12s; }
 .fade-in-up.delay-2 { animation-delay: 0.24s; }
+
+
+/* Markdown tables: responsive + bordered */
+.prose { word-break: break-word; }
+.prose table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.prose thead th { background-color: #f8fafc; font-weight: 600; }
+.prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; vertical-align: top; }
+.prose tr:nth-child(even) { background-color: #fafafa; }

@@ -89,7 +89,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
   return (
     <>
       <span
-        className="relative"
+        className="relative inline-block align-super"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -159,8 +159,37 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
           />
         </div>
       )}
+
+
+      <style jsx global>{`
+        /* 行内上标的引用圆点：更小、更靠右上，不换行 */
+        .reference-dot {
+          display: inline-block;
+          vertical-align: super;
+          font-size: 10px;
+          line-height: 1;
+          min-width: 14px;
+          height: 14px;
+          padding: 0 2px;
+          margin-left: 2px;
+          border-radius: 9999px;
+          color: #4f46e5;           /* indigo-600 */
+          background: #eef2ff;      /* indigo-50 */
+          text-align: center;
+          position: relative;
+          top: -0.1em;              /* 轻微上移，贴近右上角视觉 */
+          cursor: pointer;
+          user-select: none;
+        }
+        .reference-dot:hover { background: #e0e7ff; }
+      `}</style>
+
     </>
+
+
   );
 };
 
 export default CitationTooltip;
+
+

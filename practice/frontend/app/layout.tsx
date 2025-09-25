@@ -8,6 +8,7 @@ import { Layout, Menu, Button, Select } from "antd";
 import { useState, useEffect, useRef } from "react";
 import { BarsOutlined, PlusOutlined } from "@ant-design/icons";
 import "./globals.css";
+import 'katex/dist/katex.min.css';
 import { v4 as uuidv4 } from "uuid";
 import { LayoutContext } from "./layout-context";
 import SessionListItem from './components/SessionListItem';

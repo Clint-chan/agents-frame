@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Collapse, Spin, message as antdMessage } from 'antd';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { Message } from '../types/chat.types';
-import { processCitations, extractCitationSources } from '../utils/citationUtils';
+import { extractCitationSources } from '../utils/citationUtils';
+import CitationTooltip from './CitationTooltip';
 import CitationSources from './CitationSources';
 import DocumentReferences from './DocumentReferences';
 
@@ -24,23 +28,57 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
+  const editRef = useRef<HTMLTextAreaElement | null>(null);
+  const adjustEditHeight = () => {
+    const el = editRef.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 300)}px`;
+  };
+  useEffect(()=>{ if (editing) setTimeout(adjustEditHeight, 0); }, [editing]);
 
-  // 处理AI回答中的脚注引用
-  const processedContent = type === 'ai' && chunks
-    ? processCitations(content, chunks)
-    : content;
+  // 行内脚注引用：[ID:n] → 在 remark 阶段替换为特殊链接 citation:n，
+  // 再在 ReactMarkdown 的 a 渲染器中转成 CitationTooltip，避免打断 Markdown 结构（表格/列表/段落）。
+  const citationRemark = useMemo(() => {
+    return function citationPlugin() {
+      return (tree: any) => {
+        const walk = (node: any) => {
+          if (!node) return;
+          if (Array.isArray(node.children)) {
+            const nextChildren: any[] = [];
+            for (const child of node.children) {
+              if (child && child.type === 'text' && typeof child.value === 'string') {
+                const value: string = child.value;
+                const re = /\[(?:ID|Id|id)\s*[:：]\s*(\d+)\]/g;
+                let last = 0; let m: RegExpExecArray | null;
+                while ((m = re.exec(value)) !== null) {
+                  if (m.index > last) nextChildren.push({ type: 'text', value: value.slice(last, m.index) });
+                  const n = m[1];
+                  nextChildren.push({ type: 'link', url: '#', data: { hProperties: { 'data-citation': n } }, children: [{ type: 'text', value: n }] });
+                  last = m.index + m[0].length;
+                }
+                if (last < value.length) nextChildren.push({ type: 'text', value: value.slice(last) });
+              } else {
+                walk(child);
+                nextChildren.push(child);
+              }
+            }
+            node.children = nextChildren;
+          }
+        };
+        walk(tree);
+      };
+    };
+  }, [chunks]);
 
-  // 将单换行转换为硬换行，避免渲染时丢失回车
+  // 将单换行转换为硬换行，保留 \n 行内换行；保留 \n\n 段落
   const contentWithBreaks = useMemo(() => {
-    if (typeof processedContent !== 'string') return '';
-    const text = processedContent.replace(/\r\n/g, '\n');
-    return text.replace(/([^\s])\n(?!\n)/g, '$1  \n');
-  }, [processedContent]);
+    const text = (content || '').replace(/\r\n/g, '\n');
+    return text.replace(/([^\n])\n(?!\n)/g, '$1  \n');
+  }, [content]);
 
   // 提取引用来源（用于无 doc_aggs 时的来源列表）
   const citationSources = type === 'ai' && chunks
     ? extractCitationSources(content, chunks)
     : [];
+
 
   return (
     <div className={type === 'user' ? 'mb-4 text-right flex justify-end' : 'mb-4 text-left'}>
@@ -64,21 +102,84 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
                 toolCall ? <div><Spin size="small" /> invoking tool...</div> : <Spin size="small" />
               ) : (
                 <>
-                  {type === 'ai' && Array.isArray(processedContent) ? (
-                    <div className="prose max-w-none prose-p:my-3 prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-pre:p-3 prose-code:text-[85%]">
-                      {processedContent.map((part, index) => {
-                        if (typeof part === 'string') {
-                          const text = part.replace(/\r\n/g, '\n').replace(/([^\s])\n(?!\n)/g, '$1  \n');
-                          return <ReactMarkdown key={index}>{text}</ReactMarkdown>;
+                  <div className="prose max-w-none prose-p:my-3 overflow-x-auto">
+                    <ReactMarkdown
+                      remarkPlugins={[citationRemark, remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={{
+                        a: ({ node, href, children, ...props }) => {
+                          const citationAttr = (props as any)['data-citation'];
+                          if (citationAttr !== undefined) {
+                            const n = parseInt(String(citationAttr), 10);
+                            const chunk = (chunks || []).find(c => Number(c.index) === n);
+                            if (chunk) {
+                              return (
+                                <CitationTooltip chunk={chunk}>
+                                  <span className="reference-dot" data-number={n} data-node-id={chunk.chunk_id} onClick={(e)=>e.preventDefault()}>{n}</span>
+                                </CitationTooltip>
+                              );
+                            }
+                            return <sup>[{n}]</sup>;
+                          }
+                          return <a href={href} {...props}>{children}</a>;
+                        },
+                        code: (props: any) => {
+                          const { inline, className, children } = props as any;
+                          const match = /language-(\w+)/.exec(className || '');
+                          const lang = (match?.[1] || 'text').toLowerCase();
+                          const text = String(children).replace(/\n$/, '');
+                          if (inline) {
+                            return <code className="font-mono text-[85%] bg-gray-100 px-1 py-0.5 rounded" {...props}>{children}</code>;
+                          }
+                          if (lang === 'markdown' || lang === 'md' || lang === 'mdx') {
+                            return (
+                              <div className="my-3">
+                                <ReactMarkdown
+                                  remarkPlugins={[citationRemark, remarkGfm, remarkMath]}
+                                  rehypePlugins={[rehypeKatex]}
+                                  components={{
+                                    a: ({ href, children, ...props }) => {
+                                      const citationAttr = (props as any)['data-citation'];
+                                      if (citationAttr !== undefined) {
+                                        const n = parseInt(String(citationAttr), 10);
+                                        const chunk = (chunks || []).find(c => Number(c.index) === n);
+                                        return chunk ? (
+                                          <CitationTooltip chunk={chunk}>
+                                            <span className="reference-dot" data-number={n} data-node-id={chunk.chunk_id} onClick={(e)=>e.preventDefault()}>{n}</span>
+                                          </CitationTooltip>
+                                        ) : <sup>[{n}]</sup>;
+                                      }
+                                      return <a href={href} {...props}>{children}</a>;
+                                    }
+                                  }}
+                                >
+                                  {text}
+                                </ReactMarkdown>
+                              </div>
+                            );
+                          }
+                          const onCopy = async () => {
+                            try { await navigator.clipboard.writeText(text); antdMessage.success({ content: '代码已复制', duration: 1.2 }); } catch { antdMessage.error('复制失败'); }
+                          };
+                          return (
+                            <div className="my-3 rounded-lg border border-gray-200 overflow-hidden">
+                              <div className="flex items-center justify-between px-3 py-1.5 text-xs text-gray-600 bg-gray-50 border-b border-gray-200">
+                                <span className="uppercase tracking-wide">{lang}</span>
+                                <button onClick={onCopy} className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100" title="复制">
+                                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7.5 3h7.1c2.24 0 3.36 0 4.216.436a4 4 0 0 1 1.748 1.748C21 6.04 21 7.16 21 9.4v7.1M6.2 21h8.1c1.12 0 1.68 0 2.108-.218a2 2 0 0 0 .874-.874c.218-.428.218-.988.218-2.108V9.7c0-1.12 0-1.68-.218-2.108a2 2 0 0 0-.874-.874C15.98 6.5 15.42 6.5 14.3 6.5H6.2c-1.12 0-1.68 0-2.108.218a2 2 0 0 0-.874.874C3 8.02 3 8.58 3 9.7v8.1c0 1.12 0 1.68.218 2.108a2 2 0 0 0 .874.874C4.52 21 5.08 21 6.2 21"/></svg>
+                                </button>
+                              </div>
+                              <pre className="m-0 max-h-[520px] overflow-auto bg-gray-50">
+                                <code className={`language-${lang}`}>{children}</code>
+                              </pre>
+                            </div>
+                          );
                         }
-                        return <React.Fragment key={index}>{part}</React.Fragment>;
-                      })}
-                    </div>
-                  ) : (
-                    <div className="prose max-w-none prose-p:my-3 prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 prose-pre:rounded-lg prose-pre:p-3 prose-code:text-[85%]">
-                      <ReactMarkdown>{contentWithBreaks}</ReactMarkdown>
-                    </div>
-                  )}
+                      }}
+                    >
+                      {contentWithBreaks}
+                    </ReactMarkdown>
+                  </div>
 
                   {doc_aggs && doc_aggs.length > 0 ? (
                     <DocumentReferences docAggs={doc_aggs} />
@@ -91,14 +192,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
           ) : (
             <div className="mx-auto w-[838px] max-w-full rounded-xl border border-gray-300 bg-white p-3 focus-within:ring-2 focus-within:ring-gray-200">
               <textarea
-                className="w-full resize-none bg-transparent text-[15px] leading-6 text-gray-900 outline-none"
-                rows={4}
+                ref={editRef}
+                className="w-full resize-none bg-transparent text-[15px] leading-6 text-gray-900 outline-none py-1.5"
+                rows={1}
+                style={{ minHeight: 40, maxHeight: 300, overflow: 'hidden' }}
                 value={editText}
-                onChange={(e) => setEditText(e.target.value)}
+                onChange={(e) => { setEditText(e.target.value); adjustEditHeight(); }}
+                onInput={adjustEditHeight}
+                onFocus={adjustEditHeight}
               />
               <div className="mt-2 flex justify-end gap-2">
-                <button className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 hover:bg-gray-50" onClick={() => { setEditing(false); setEditText(content); }}>Cancel</button>
-                <button className="rounded-md bg-black px-3 py-1.5 text-sm text-white hover:bg-black/90" onClick={() => { onEdit?.(message.id, editText); setEditing(false); antdMessage.success({ content: 'Sent', duration: 1.2 }); }}>Send</button>
+                <button className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-50" onClick={() => { setEditing(false); setEditText(content); }}>Cancel</button>
+                <button className="rounded-md bg-black px-3 py-1.5 text-sm font-semibold text-white hover:bg-black/90" onClick={() => { onEdit?.(message.id, editText); setEditing(false); antdMessage.success({ content: 'Sent', duration: 1.2 }); }}>Send</button>
               </div>
             </div>
           )}
