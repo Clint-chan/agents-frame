@@ -210,6 +210,8 @@ html, body {
   color: #374151;            /* slate-700 text */
   padding: 1rem;
   border-radius: 0.5rem;
+  border: none;
+  box-shadow: none;
 }
 .prose pre code { background-color: transparent !important; padding: 0; border-radius: 0; }
 .prose pre code span { background-color: transparent !important; }
@@ -235,9 +237,20 @@ html, body {
 .fade-in-up.delay-2 { animation-delay: 0.24s; }
 
 
-/* Markdown tables: responsive + bordered */
+/* Markdown tables: card-like header + row bottom borders (no zebra) */
 .prose { word-break: break-word; }
-.prose table { width: 100%; border-collapse: collapse; table-layout: auto; }
-.prose thead th { background-color: #f8fafc; font-weight: 600; }
-.prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; vertical-align: top; }
-.prose tr:nth-child(even) { background-color: #fafafa; }
+.prose table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #fff; }
+.prose thead th { background-color: #f8fafc; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+.prose tbody td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+.prose tbody tr:last-child td { border-bottom: none; }
+/* remove zebra stripes */
+.prose tr:nth-child(even) { background-color: transparent; }
+
+.rf-codecard { background: transparent !important; border: none !important; box-shadow: none !important; }
+
+.rf-code-content{background-color:#f8fafc;color:#374151;padding:1rem}
+.rf-code-content code.hljs{background:transparent!important}
+
+
+/* Preserve code newlines and wrap long lines inside custom code blocks */
+.rf-code-content code { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
