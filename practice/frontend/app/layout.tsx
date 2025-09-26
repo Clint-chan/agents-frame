@@ -10,6 +10,8 @@ import { BarsOutlined, PlusOutlined } from "@ant-design/icons";
 import "./globals.css";
 import 'katex/dist/katex.min.css';
 import { v4 as uuidv4 } from "uuid";
+import 'highlight.js/styles/github.css';
+
 import { LayoutContext } from "./layout-context";
 import SessionListItem from './components/SessionListItem';
 import AgentSelector from './components/AgentSelector';

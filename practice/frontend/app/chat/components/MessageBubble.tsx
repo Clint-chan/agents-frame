@@ -42,7 +42,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
 
 
   return (
-    <div className={type === 'user' ? 'mb-4 text-right flex justify-end' : 'mb-4 text-left'}>
+    <div className={type === 'user' ? 'mb-4 flex justify-end' : 'mb-4 flex'}>
       <div className={`flex ${type === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start gap-3 max-w-4xl`}>
         {type === 'ai' ? (
           <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-gray-200">
@@ -58,12 +58,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
 
         <div className={`flex max-w-[85%] flex-col ${type === 'user' ? 'items-end' : 'items-start'}`}>
           {!editing ? (
-            <div className={`group ${type === 'user' ? 'w-fit rounded-2xl px-3 py-2 bg-[#006cff] text-white shadow-sm' : 'rounded-lg px-0 py-0 bg-transparent text-gray-900'}`}>
+            <div className={`group ${type === 'user' ? 'w-fit rounded-2xl px-3 py-2 bg-[#006cff] text-white shadow-sm text-left' : 'rounded-lg px-0 py-0 bg-transparent text-gray-900'}`}>
               {type === 'ai' && isStreaming && content === '' ? (
                 toolCall ? <div><Spin size="small" /> invoking tool...</div> : <Spin size="small" />
               ) : (
                 <>
-                  <div className="prose max-w-none prose-p:my-3 overflow-x-auto">
+                  <div className="prose max-w-none prose-p:my-3 overflow-x-auto text-left">
                     <ChatMarkdown content={contentWithBreaks} chunks={chunks} />
                   </div>
 

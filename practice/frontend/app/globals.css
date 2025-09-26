@@ -203,14 +203,25 @@ html, body {
 }
 
 /* Chat typography refinements */
+/* Block code: unified background on <pre>; transparent inside <code> to avoid patchy tokens */
 .prose pre {
   overflow: auto;
+  background-color: #f8fafc; /* light card-like background */
+  color: #374151;            /* slate-700 text */
+  padding: 1rem;
+  border-radius: 0.5rem;
 }
-.prose code {
+.prose pre code { background-color: transparent !important; padding: 0; border-radius: 0; }
+.prose pre code span { background-color: transparent !important; }
+/* Inline code: only when not inside <pre> */
+.prose :not(pre) > code {
   background-color: rgba(0,0,0,0.03);
   padding: 0.15rem 0.35rem;
   border-radius: 0.375rem; /* rounded-md */
 }
+
+.prose pre code.hljs { background-color: transparent !important; }
+.hljs { background: transparent !important; color: inherit; }
 
 
 /* Chat content fade-in up animation */
