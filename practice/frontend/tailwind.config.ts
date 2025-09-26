@@ -11,9 +11,10 @@ export default {
         'chat-ai': '#f5f5f5',
         'chat-tool': '#fef3c7',
         // Design tokens to mirror reference styles
+        'background': '#ffffff',
+        'foreground': '#111827',
         'muted': '#f8fafc',
         'muted-foreground': '#6b7280',
-        'foreground': '#111827',
         'border': '#e5e7eb'
       }
     }

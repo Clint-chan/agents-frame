@@ -14,6 +14,8 @@ import DOMPurify from 'dompurify';
 import { message as antdMessage } from 'antd';
 import CitationTooltip from './CitationTooltip';
 import { ChunkInfo } from '../types/chat.types';
+import 'highlight.js/styles/github.css';
+
 
 interface ChatMarkdownProps {
   content: string;
@@ -93,7 +95,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
             try { await navigator.clipboard.writeText(textOut); antdMessage.success({ content: '\u8868\u683c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f', duration: 1.2 }); } catch { antdMessage.error('\u590d\u5236\u5931\u8d25'); }
           };
           return (
-            <div className="my-4 flex flex-col space-y-2">
+            <div className="my-4 w-full flex flex-col space-y-2">
               <div className="flex items-center justify-end gap-1">
                 <button onClick={onCopy} title="复制表格" type="button" className="cursor-pointer p-1 text-muted-foreground transition-all hover:text-foreground" aria-label="复制表格">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -156,7 +158,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
               try { await navigator.clipboard.writeText(textOut); antdMessage.success({ content: '\u8868\u683c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f', duration: 1.2 }); } catch { antdMessage.error('\u590d\u5236\u5931\u8d25'); }
             };
             return (
-              <div className="my-4 flex flex-col space-y-2">
+              <div className="my-4 w-full flex flex-col space-y-2">
                 <div className="flex items-center justify-end gap-1">
                   <button onClick={onCopyTable} title="复制表格" type="button" className="cursor-pointer p-1 text-muted-foreground transition-all hover:text-foreground" aria-label="复制表格">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -186,15 +188,15 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
             try { await navigator.clipboard.writeText(raw); antdMessage.success({ content: '\u4ee3\u7801\u5df2\u590d\u5236', duration: 1.2 }); } catch { antdMessage.error('\u590d\u5236\u5931\u8d25'); }
           };
           return (
-            <div className="my-3 rounded-xl overflow-hidden bg-transparent rf-codecard">
-              <div className="flex items-center justify-between px-3 py-1.5 text-xs text-gray-700 bg-gray-200 border-b border-gray-100">
-                <span className="uppercase tracking-wide">{lang}</span>
+            <div className="my-3 w-full overflow-hidden rounded-md border bg-white">
+              <div className="flex items-center justify-between border-b bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
+                <span className="lowercase">{lang}</span>
                 <button onClick={onCopy} className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100" title="复制">
                   <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7.5 3h7.1c2.24 0 3.36 0 4.216.436a4 4 0 0 1 1.748 1.748C21 6.04 21 7.16 21 9.4v7.1M6.2 21h8.1c1.12 0 1.68 0 2.108-.218a2 2 0 0 0 .874-.874c.218-.428.218-.988.218-2.108V9.7c0-1.12 0-1.68-.218-2.108a2 2 0 0 0-.874-.874C15.98 6.5 15.42 6.5 14.3 6.5H6.2c-1.12 0-1.68 0-2.108.218a2 2 0 0 0-.874.874C3 8.02 3 8.58 3 9.7v8.1c0 1.12 0 1.68.218 2.108a2 2 0 0 0 .874.874C4.52 21 5.08 21 6.2 21"/></svg>
                 </button>
               </div>
               <div className="rf-code-content max-h-[520px] overflow-auto">
-                <code ref={codeRef as any} className={`language-${lang} hljs`}>{children}</code>
+                <code ref={codeRef as any} className={`language-${lang} hljs font-mono text-sm`}>{children}</code>
               </div>
             </div>
           );

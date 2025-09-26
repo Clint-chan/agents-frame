@@ -223,7 +223,7 @@ html, body {
 }
 
 .prose pre code.hljs { background-color: transparent !important; }
-.hljs { background: transparent !important; color: inherit; }
+.hljs { background: transparent !important; }
 
 
 /* Chat content fade-in up animation */
@@ -250,7 +250,9 @@ html, body {
 
 .rf-code-content{background-color:#f8fafc;color:#374151;padding:1rem}
 .rf-code-content code.hljs{background:transparent!important}
+.rf-code-content code.hljs{padding-left:0!important;padding-right:0!important;margin-left:0!important;margin-right:0!important;display:block}
+
 
 
 /* Preserve code newlines and wrap long lines inside custom code blocks */
-.rf-code-content code { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.rf-code-content code { white-space: pre-wrap; word-break: break-word; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
