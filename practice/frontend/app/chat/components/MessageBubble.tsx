@@ -1,4 +1,7 @@
 "use client";
+// MessageBubble: Container for each chat message (user/ai).
+// Delegates rich text rendering to ChatMarkdown; keeps actions (edit/copy/feedback) lightweight.
+
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Collapse, Spin, message as antdMessage } from 'antd';
@@ -35,7 +38,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
     return text.replace(/([^\n])\n(?!\n)/g, '$1  \n');
   }, [content]);
 
-  
+
 
 
   return (
@@ -64,7 +67,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
                     <ChatMarkdown content={contentWithBreaks} chunks={chunks} />
                   </div>
 
-                  
+
                 </>
               )}
             </div>

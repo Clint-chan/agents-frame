@@ -1,4 +1,8 @@
 "use client";
+// ChatMarkdown: Unified Markdown renderer for chat content.
+// - Normalizes [ID:n] citations into inline reference dots handled by CitationTooltip.
+// - Supports GFM, math (KaTeX), code copy; keeps logic centralized and DRY.
+
 
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';

@@ -27,7 +27,8 @@ export interface ChunkInfo {
   document_id: string;
   document_name: string;
   image_id?: string;
-  positions: any[];
+  // positions: list of bounding boxes as [page, x1, x2, y1, y2]
+  positions: number[][];
   similarity: number;
   page_num_int?: number[]; // optional: pages for this chunk, take first for display/jump
 }

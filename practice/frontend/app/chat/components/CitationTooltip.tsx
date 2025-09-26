@@ -1,4 +1,7 @@
 "use client";
+// CitationTooltip: Hover card for knowledge chunk refs. Renders via Portal to avoid p>div issues.
+// Shows document name, page (from positions/page_num_int), optional image, and sanitized HTML content.
+
 
 import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -149,7 +152,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
 
   // derive page and doc url for jump
   const pageFromArray = Array.isArray((chunk as any).page_num_int) && (chunk as any).page_num_int.length > 0 ? Number((chunk as any).page_num_int[0]) : undefined;
-  const posPage = Array.isArray(chunk.positions) && Array.isArray((chunk.positions as any)[0]) ? Number((chunk.positions as any)[0][0]) : undefined;
+  const posPage = Array.isArray(chunk.positions) && Array.isArray((chunk.positions as number[][])[0]) ? Number((chunk.positions as number[][])[0][0]) : undefined;
   const page = pageFromArray || posPage || 1;
   // 统一从配置读取文档与API地址
   // 由于后端文档服务不支持 #page= 跳页，这里使用无 hash 的原文链接，避免误导

@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+// SiderComponent: Sidebar with agents and session list.
+// Keeps hover feedback subtle; fetches agent options via centralized apiBase config.
+
 import { Layout } from 'antd';
 import { apiBase } from '../config/clientConfig';
 import { PlusOutlined, UpOutlined } from '@ant-design/icons';
