@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from 'antd';
+import { apiBase } from '../config/clientConfig';
 import { PlusOutlined, UpOutlined } from '@ant-design/icons';
 
 import { useLayoutContext } from '../layout-context'
@@ -69,7 +70,7 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
   useEffect(() => {
     const loadAgents = async () => {
       try {
-        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/chat/agents`)
+        const resp = await fetch(`${apiBase}/chat/agents`)
         const data = await resp.json()
         const list = (data?.data?.agents || []).map((a: any) => ({ id: a.id || a.agent_id, name: a.name || a.title || a.id }))
         setAgentOptions(list)

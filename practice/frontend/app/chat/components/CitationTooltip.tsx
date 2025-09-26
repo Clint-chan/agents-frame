@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChunkInfo } from '../types/chat.types';
 import DOMPurify from 'dompurify';
+import { apiBase, docBase } from '../../config/clientConfig';
 
 interface CitationTooltipProps {
   chunk: ChunkInfo;
@@ -150,7 +151,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
   const pageFromArray = Array.isArray((chunk as any).page_num_int) && (chunk as any).page_num_int.length > 0 ? Number((chunk as any).page_num_int[0]) : undefined;
   const posPage = Array.isArray(chunk.positions) && Array.isArray((chunk.positions as any)[0]) ? Number((chunk.positions as any)[0][0]) : undefined;
   const page = pageFromArray || posPage || 1;
-  const docBase = process.env.NEXT_PUBLIC_DOC_BASE_URL || 'http://192.168.18.124:8080';
+  // 统一从配置读取文档与API地址
   // 由于后端文档服务不支持 #page= 跳页，这里使用无 hash 的原文链接，避免误导
   const docUrl = `${docBase}/document/${chunk.document_id}?ext=pdf&prefix=document`;
 
@@ -211,7 +212,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
             {chunk.image_id && (
               <div className="flex-shrink-0">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/chat/chunks/image/${chunk.image_id}`}
+                  src={`${apiBase}/chat/chunks/image/${chunk.image_id}`}
                   alt="文档图片"
                   className="w-44 h-36 object-contain rounded-lg border bg-white cursor-zoom-in"
                   onClick={() => setShowImagePreview(true)}
