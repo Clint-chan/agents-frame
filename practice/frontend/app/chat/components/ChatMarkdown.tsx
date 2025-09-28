@@ -155,8 +155,10 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
           const { inline, className, children } = props as any;
           const match = /language-(\w+)/.exec(className || '');
           const lang = (match?.[1] || 'text').toLowerCase();
-          const text = String(children).replace(/\n$/, '');
-          if (inline) {
+          const rawText = String(children);
+          const text = rawText.replace(/\n$/, '');
+          const isInline = typeof inline === 'boolean' ? inline : !/\n/.test(rawText);
+          if (isInline) {
             return <code className="font-mono text-[85%] bg-gray-100 px-1 py-0.5 rounded" {...props}>{children}</code>;
           }
           if (lang === 'markdown' || lang === 'md' || lang === 'mdx') {
