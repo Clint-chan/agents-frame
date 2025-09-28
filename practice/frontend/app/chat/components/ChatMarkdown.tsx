@@ -88,6 +88,8 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
       remarkPlugins={[citationRemark, remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex, rehypeHighlight]}
       components={{
+        // 最多支持到 h5：将 h6 映射到 h5，以统一样式
+        h6: ({ children, ...props }: any) => <h5 {...props}>{children}</h5>,
         pre: ({ children }: any) => <>{children}</>,
         a: ({ node, href, children, ...props }) => {
           const citationAttr = (props as any)['data-citation'];

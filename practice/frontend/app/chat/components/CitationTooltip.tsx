@@ -251,8 +251,8 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
         </div>, document.body)
       }
 
-      {/* 全屏图片预览 */}
-      {showImagePreview && (
+      {/* 全屏图片预览（通过 Portal 渲染，避免落在 <p> 内导致 p>div 结构错误） */}
+      {showImagePreview && createPortal(
         <div
           className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center"
           onClick={() => setShowImagePreview(false)}
@@ -262,7 +262,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ chunk, children }) =>
             alt="文档大图"
             className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
           />
-        </div>
+        </div>, document.body
       )}
 
 
