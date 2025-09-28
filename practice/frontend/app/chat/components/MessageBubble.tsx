@@ -41,6 +41,31 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
 
 
 
+  const copyText = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      throw new Error('clipboard API unavailable');
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  };
+
   return (
     <div className={type === 'user' ? 'mb-4 flex justify-end' : 'mb-4 flex'}>
       <div className={`flex ${type === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start gap-3 w-full max-w-4xl`}>
@@ -103,12 +128,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
 
             <button
               onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(content);
+                const ok = await copyText(content);
+                if (ok) {
                   setCopied(true);
                   setTimeout(()=>setCopied(false), 700);
                   antdMessage.success({ content: 'Copied to clipboard!', duration: 1.2 });
-                } catch {
+                } else {
                   antdMessage.error({ content: 'Copy failed', duration: 1.2 });
                 }
               }}

@@ -56,7 +56,34 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
     };
   }, [chunks]);
 
+  // 可靠复制函数：Clipboard API 失败时回退到 execCommand('copy')
+  const copyText = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      throw new Error('clipboard API unavailable');
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  };
+
   return (
+    <div className="prose max-w-none text-[15px]">
     <ReactMarkdown
       remarkPlugins={[citationRemark, remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex, rehypeHighlight]}
@@ -92,7 +119,9 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
           const onCopy = async () => {
             const table = tableRef.current; if (!table) return; const rows = Array.from(table.rows); let textOut = '';
             for (const row of rows) { const cells = Array.from(row.cells).map(c => (c.innerText || '').trim()); textOut += cells.join('\t') + '\n'; }
-            try { await navigator.clipboard.writeText(textOut); antdMessage.success({ content: '\u8868\u683c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f', duration: 1.2 }); } catch { antdMessage.error('\u590d\u5236\u5931\u8d25'); }
+            const ok = await copyText(textOut);
+            if (ok) antdMessage.success({ content: '\u8868\u683c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f', duration: 1.2 });
+            else antdMessage.error('\u590d\u5236\u5931\u8d25');
           };
           return (
             <div className="my-4 w-full flex flex-col space-y-2">
@@ -155,7 +184,9 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
               const el = wrapRef.current; if (!el) return; const table = el.querySelector('table') as HTMLTableElement | null; if (!table) return;
               const rows = Array.from(table.rows); let textOut = '';
               for (const row of rows) { const cells = Array.from(row.cells).map(c => (c.innerText || '').trim()); textOut += cells.join('\t') + '\n'; }
-              try { await navigator.clipboard.writeText(textOut); antdMessage.success({ content: '\u8868\u683c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f', duration: 1.2 }); } catch { antdMessage.error('\u590d\u5236\u5931\u8d25'); }
+              const ok = await copyText(textOut);
+              if (ok) antdMessage.success({ content: '\u8868\u683c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f', duration: 1.2 });
+              else antdMessage.error('\u590d\u5236\u5931\u8d25');
             };
             return (
               <div className="my-4 w-full flex flex-col space-y-2">
@@ -185,7 +216,9 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
           const codeRef = React.useRef<HTMLElement | null>(null);
           const onCopy = async () => {
             const raw = codeRef.current?.innerText ?? text;
-            try { await navigator.clipboard.writeText(raw); antdMessage.success({ content: '\u4ee3\u7801\u5df2\u590d\u5236', duration: 1.2 }); } catch { antdMessage.error('\u590d\u5236\u5931\u8d25'); }
+            const ok = await copyText(raw);
+            if (ok) antdMessage.success({ content: '\u4ee3\u7801\u5df2\u590d\u5236', duration: 1.2 });
+            else antdMessage.error('\u590d\u5236\u5931\u8d25');
           };
           return (
             <div className="my-3 w-full overflow-hidden rounded-md border bg-white">
@@ -205,6 +238,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ content, chunks }) => {
     >
       {content}
     </ReactMarkdown>
+    </div>
   );
 };
 

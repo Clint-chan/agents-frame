@@ -11,6 +11,10 @@ import "./globals.css";
 import 'katex/dist/katex.min.css';
 import { v4 as uuidv4 } from "uuid";
 import 'highlight.js/styles/github.css';
+import { Geist, Geist_Mono } from 'next/font/google';
+
+const geist = Geist({ subsets: ['latin'], display: 'swap', variable: '--font-geist' });
+const geistMono = Geist_Mono({ subsets: ['latin'], display: 'swap', variable: '--font-geist-mono' });
 
 import { LayoutContext } from "./layout-context";
 import SessionListItem from './components/SessionListItem';
@@ -131,7 +135,7 @@ export default function RootLayout({ children }: { children: any }) {
 
   return (
     <LayoutContext.Provider value={{ agentId, setAgentId, currentThreadId, setCurrentThreadId }}>
-      <html>
+      <html className={`${geist.variable} ${geistMono.variable}`}>
         <body className="min-h-screen bg-white text-gray-900">
           <Layout style={{ minHeight: "100vh" }}>
             <SiderComponent

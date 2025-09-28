@@ -37,7 +37,7 @@
 
 /* 基础字体设置 */
 body {
-  font-family: var(--font-family-primary), var(--font-family-chinese);
+  font-family: var(--font-geist, var(--font-family-primary)), var(--font-family-chinese);
   color: var(--color-text-primary);
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
@@ -197,7 +197,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: var(--font-family-primary), var(--font-family-chinese);
+  font-family: var(--font-geist, var(--font-family-primary)), var(--font-family-chinese);
   background-color: var(--color-bg-tertiary);
   line-height: 1.7;
 }
@@ -255,4 +255,27 @@ html, body {
 
 
 /* Preserve code newlines and wrap long lines inside custom code blocks */
-.rf-code-content code { white-space: pre-wrap; word-break: break-word; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.rf-code-content code { white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; line-height: 1.6; font-size: 0.8rem; font-weight: 520; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+/* Mono font for code blocks and inline code */
+code, kbd, pre, samp {
+  font-family: var(--default-mono-font-family, var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-feature-settings: var(--default-mono-font-feature-settings, normal);
+  font-variation-settings: var(--default-mono-font-variation-settings, normal);
+  font-size: 1em;
+}
+
+/* Markdown typography alignment (headings, lists) */
+.prose { max-width: none; }
+.prose h1 { font-size: 1.5rem; line-height: 2rem; margin: 1.25em 0 .5em; font-weight: 700; }
+.prose h2 { font-size: 1.25rem; line-height: 1.75rem; margin: 1.2em 0 .5em; font-weight: 600; }
+.prose h3 { font-size: 1.125rem; line-height: 1.6rem; margin: 1.1em 0 .5em; font-weight: 600; }
+.prose h4 { font-size: 1rem; line-height: 1.5rem; margin: 1em 0 .5em; font-weight: 600; }
+.prose p { margin: .6em 0; }
+.prose ul { list-style-type: disc; padding-left: 1.5rem; margin: .5em 0; }
+.prose ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5em 0; }
+.prose ul ul { list-style-type: circle; margin-top: .25em; }
+.prose ul ul ul { list-style-type: square; }
+.prose ol ol { list-style-type: lower-alpha; }
+.prose ol ol ol { list-style-type: lower-roman; }
+.prose li { margin: .25em 0; }

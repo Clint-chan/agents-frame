@@ -73,7 +73,7 @@ const SiderComponent: React.FC<SiderComponentProps> = ({
   useEffect(() => {
     const loadAgents = async () => {
       try {
-        const resp = await fetch(`${apiBase}/chat/agents`)
+        const resp = await fetch(`/api/agents`)
         const data = await resp.json()
         const list = (data?.data?.agents || []).map((a: any) => ({ id: a.id || a.agent_id, name: a.name || a.title || a.id }))
         setAgentOptions(list)
