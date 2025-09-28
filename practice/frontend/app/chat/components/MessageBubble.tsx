@@ -81,22 +81,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming, onR
           <div className="w-8 shrink-0" />
         )}
 
-        <div className={`flex w-full max-w-[85%] flex-col ${type === 'user' ? 'items-end' : 'items-start'}`}>
+        <div className={`flex w-full max-w-[90%] flex-col ${type === 'user' ? 'items-end' : 'items-start'}`}>
           {!editing ? (
-            <div className={`group ${type === 'user' ? 'w-fit rounded-2xl px-3 py-2 bg-[#006cff] text-white shadow-sm text-left' : 'w-full rounded-lg px-0 py-0 bg-transparent text-gray-900'}`}>
-              {type === 'ai' && isStreaming && content === '' ? (
-                toolCall ? <div><Spin size="small" /> invoking tool...</div> : <Spin size="small" />
-              ) : (
-                <>
+          <div className={`group ${type === 'user' ? 'w-fit rounded-2xl px-3 bg-[#006cff] text-white shadow-sm text-left' : 'w-full rounded-lg px-0 py-0 bg-transparent text-gray-900'}`}>
+
+            {type === 'ai' && isStreaming && content === '' ? (
+              toolCall ? <div><Spin size="small" /> invoking tool...</div> : <Spin size="small" />
+            ) : (
+              <>
+                {type === 'user' ? (
+                  <ChatMarkdown content={contentWithBreaks} chunks={chunks} />
+                ) : (
                   <div className="prose max-w-none w-full prose-p:my-3 overflow-x-auto text-left">
                     <ChatMarkdown content={contentWithBreaks} chunks={chunks} />
                   </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
 
-
-                </>
-              )}
-            </div>
-          ) : (
             <div className="mx-auto w-[838px] max-w-full rounded-xl border border-gray-300 bg-white p-3 focus-within:ring-2 focus-within:ring-gray-200 rf-expand">
               <textarea
                 ref={editRef}
