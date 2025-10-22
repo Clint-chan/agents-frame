@@ -2,8 +2,10 @@ import { useSetModalState } from '@/hooks/common-hooks';
 import { NodeMouseHandler } from '@xyflow/react';
 import get from 'lodash/get';
 import React, { useCallback, useEffect } from 'react';
-import { BeginId, Operator } from '../constant';
+import { Operator } from '../constant';
 import useGraphStore from '../store';
+import { useCacheChatLog } from './use-cache-chat-log';
+import { useGetBeginNodeDataInputs } from './use-get-begin-query';
 import { useSaveGraph } from './use-save-graph';
 
 export const useShowFormDrawer = () => {
@@ -11,6 +13,7 @@ export const useShowFormDrawer = () => {
     clickedNodeId: clickNodeId,
     setClickedNodeId,
     getNode,
+    setClickedToolId,
   } = useGraphStore((state) => state);
   const {
     visible: formDrawerVisible,
@@ -20,14 +23,16 @@ export const useShowFormDrawer = () => {
 
   const handleShow = useCallback(
     (e: React.MouseEvent<Element>, nodeId: string) => {
+      const tool = get(e.target, 'dataset.tool');
       // TODO: Operator type judgment should be used
-      if (nodeId === BeginId) {
+      if (nodeId.startsWith(Operator.Tool) && !tool) {
         return;
       }
       setClickedNodeId(nodeId);
+      setClickedToolId(tool);
       showFormDrawer();
     },
-    [setClickedNodeId, showFormDrawer],
+    [setClickedNodeId, setClickedToolId, showFormDrawer],
   );
 
   return {
@@ -82,12 +87,26 @@ export function useShowDrawer({
   } = useShowSingleDebugDrawer();
   const { formDrawerVisible, hideFormDrawer, showFormDrawer, clickedNode } =
     useShowFormDrawer();
+  const inputs = useGetBeginNodeDataInputs();
 
   useEffect(() => {
     if (drawerVisible) {
-      showRunModal();
+      if (inputs.length > 0) {
+        showRunModal();
+        hideChatModal();
+      } else {
+        showChatModal();
+        hideRunModal();
+      }
     }
-  }, [hideChatModal, hideRunModal, showChatModal, showRunModal, drawerVisible]);
+  }, [
+    hideChatModal,
+    hideRunModal,
+    showChatModal,
+    showRunModal,
+    drawerVisible,
+    inputs,
+  ]);
 
   const hideRunOrChatDrawer = useCallback(() => {
     hideChatModal();
@@ -131,6 +150,26 @@ export function useShowDrawer({
     hideFormDrawer,
     hideRunOrChatDrawer,
     showChatModal,
+  };
+}
+
+export function useShowLogSheet({
+  setCurrentMessageId,
+}: Pick<ReturnType<typeof useCacheChatLog>, 'setCurrentMessageId'>) {
+  const { visible, showModal, hideModal } = useSetModalState();
+
+  const handleShow = useCallback(
+    (messageId: string) => {
+      setCurrentMessageId(messageId);
+      showModal();
+    },
+    [setCurrentMessageId, showModal],
+  );
+
+  return {
+    logSheetVisible: visible,
+    hideLogSheet: hideModal,
+    showLogSheet: handleShow,
   };
 }
 

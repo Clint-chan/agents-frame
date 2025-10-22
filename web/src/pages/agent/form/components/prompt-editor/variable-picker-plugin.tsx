@@ -10,6 +10,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
+  useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import {
   $createParagraphNode,
@@ -108,55 +109,28 @@ function VariablePickerMenuItem({
   );
 }
 
-export type VariablePickerMenuOptionType = {
-  label: string;
-  title: string;
-  value?: string;
-  options: Array<{
-    label: string;
-    value: string;
-    icon: ReactNode;
-  }>;
-};
-
 export type VariablePickerMenuPluginProps = {
   value?: string;
-  extraOptions?: VariablePickerMenuOptionType[];
-  baseOptions?: VariablePickerMenuOptionType[];
+  extraOptions?: Array<{
+    label: string;
+    title: string;
+    options: Array<{ label: string; value: string; icon?: ReactNode }>;
+  }>;
 };
 export default function VariablePickerMenuPlugin({
   value,
   extraOptions,
-  baseOptions,
 }: VariablePickerMenuPluginProps): JSX.Element {
   const [editor] = useLexicalComposerContext();
+  const isFirstRender = useRef(true);
 
-  // const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
-  //   minLength: 0,
-  // });
-
-  const testTriggerFn = React.useCallback((text: string) => {
-    const lastChar = text.slice(-1);
-    if (lastChar === '/') {
-      console.log('Found trigger character "/"');
-      return {
-        leadOffset: text.length - 1,
-        matchingString: '',
-        replaceableString: '/',
-      };
-    }
-    return null;
-  }, []);
-
-  const previousValue = useRef<string | undefined>();
+  const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
+    minLength: 0,
+  });
 
   const [queryString, setQueryString] = React.useState<string | null>('');
 
   let options = useBuildQueryVariableOptions();
-
-  if (baseOptions) {
-    options = baseOptions as typeof options;
-  }
 
   const buildNextOptions = useCallback(() => {
     let filteredOptions = [...options, ...(extraOptions ?? [])];
@@ -293,8 +267,8 @@ export default function VariablePickerMenuPlugin({
   );
 
   useEffect(() => {
-    if (editor && value && value !== previousValue.current) {
-      previousValue.current = value;
+    if (editor && value && isFirstRender.current) {
+      isFirstRender.current = false;
       editor.update(
         () => {
           parseTextToVariableNodes(value);
@@ -303,21 +277,6 @@ export default function VariablePickerMenuPlugin({
       );
     }
   }, [parseTextToVariableNodes, editor, value]);
-
-  // Fixed the issue where the cursor would go to the end when changing its own data
-  useEffect(() => {
-    return editor.registerUpdateListener(({ editorState, tags }) => {
-      // If we trigger the programmatic update ourselves, we should not write back to avoid an infinite loop.
-      if (tags.has(ProgrammaticTag)) return;
-
-      editorState.read(() => {
-        const text = $getRoot().getTextContent();
-        if (text !== previousValue.current) {
-          previousValue.current = text;
-        }
-      });
-    });
-  }, [editor]);
 
   return (
     <LexicalTypeaheadMenuPlugin<VariableOption | VariableInnerOption>
@@ -329,7 +288,7 @@ export default function VariablePickerMenuPlugin({
           closeMenu,
         )
       }
-      triggerFn={testTriggerFn}
+      triggerFn={checkForTriggerMatch}
       options={buildNextOptions()}
       menuRenderFn={(anchorElementRef, { selectOptionAndCleanUp }) => {
         const nextOptions = buildNextOptions();

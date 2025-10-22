@@ -13,17 +13,11 @@ interface IProps {
   onClick?: () => void;
   moreDropdown: React.ReactNode;
   sharedBadge?: ReactNode;
-  icon?: React.ReactNode;
 }
-export function HomeCard({
-  data,
-  onClick,
-  moreDropdown,
-  sharedBadge,
-  icon,
-}: IProps) {
+export function HomeCard({ data, onClick, moreDropdown, sharedBadge }: IProps) {
   return (
     <Card
+      className="bg-bg-card  border-colors-outline-neutral-standard"
       onClick={() => {
         // navigateToSearch(data?.id);
         onClick?.();
@@ -39,12 +33,9 @@ export function HomeCard({
         </div>
         <div className="flex flex-col justify-between gap-1 flex-1 h-full w-[calc(100%-50px)]">
           <section className="flex justify-between">
-            <section className="flex flex-1 min-w-0 gap-1 items-center">
-              <div className="text-base font-bold leading-snug truncate">
-                {data.name}
-              </div>
-              {icon}
-            </section>
+            <div className="text-[20px] font-bold w-80% leading-5 text-ellipsis overflow-hidden">
+              {data.name}
+            </div>
             {moreDropdown}
           </section>
 
@@ -53,7 +44,7 @@ export function HomeCard({
               {data.description}
             </div>
             <div className="flex justify-between items-center">
-              <p className="text-sm opacity-80 whitespace-nowrap">
+              <p className="text-sm opacity-80">
                 {formatDate(data.update_time)}
               </p>
               {sharedBadge}

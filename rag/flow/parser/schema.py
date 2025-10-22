@@ -20,5 +20,6 @@ class ParserFromUpstream(BaseModel):
     elapsed_time: float | None = Field(default=None, alias="_elapsed_time")
 
     name: str
-    file: dict | None = Field(default=None)
+    blob: bytes
+
     model_config = ConfigDict(populate_by_name=True, extra="forbid")

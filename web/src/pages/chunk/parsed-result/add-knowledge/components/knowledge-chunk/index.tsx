@@ -40,7 +40,7 @@ import {
   useNavigatePage,
 } from '@/hooks/logic-hooks/navigate-hooks';
 import { useFetchKnowledgeBaseConfiguration } from '@/hooks/use-knowledge-request';
-import { useGetDocumentUrl } from './components/document-preview/hooks';
+import { useGetDocumentUrl } from '../../../knowledge-chunk/components/document-preview/hooks';
 import styles from './index.less';
 
 const Chunk = () => {
@@ -72,7 +72,7 @@ const Chunk = () => {
     chunkUpdatingVisible,
     documentId,
   } = useUpdateChunk();
-  const { navigateToDataFile, getQueryString, navigateToDatasetList } =
+  const { navigateToDataset, getQueryString, navigateToDatasetList } =
     useNavigatePage();
   const fileUrl = useGetDocumentUrl();
   useEffect(() => {
@@ -188,7 +188,7 @@ const Chunk = () => {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink
-                onClick={navigateToDataFile(
+                onClick={navigateToDataset(
                   getQueryString(QueryStringMap.id) as string,
                 )}
               >

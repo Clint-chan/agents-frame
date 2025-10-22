@@ -20,10 +20,9 @@ import { buildMessageItemReference } from '../../utils';
 
 interface IProps {
   controller: AbortController;
-  stopOutputMessage(): void;
 }
 
-export function SingleChatBox({ controller, stopOutputMessage }: IProps) {
+export function SingleChatBox({ controller }: IProps) {
   const {
     value,
     scrollRef,
@@ -35,6 +34,7 @@ export function SingleChatBox({ controller, stopOutputMessage }: IProps) {
     handlePressEnter,
     regenerateMessage,
     removeMessageById,
+    stopOutputMessage,
     handleUploadFile,
     removeFile,
   } = useSendMessage(controller);

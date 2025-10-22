@@ -31,12 +31,7 @@ export function ChatPromptEngine() {
           <FormItem>
             <FormLabel>{t('system')}</FormLabel>
             <FormControl>
-              <Textarea
-                {...field}
-                rows={8}
-                placeholder={t('messagePlaceholder')}
-                className="overflow-y-auto"
-              />
+              <Textarea {...field} rows={8} />
             </FormControl>
             <FormMessage />
           </FormItem>

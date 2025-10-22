@@ -1,7 +1,4 @@
-import {
-  IAgentLogsRequest,
-  IPipeLineListRequest,
-} from '@/interfaces/database/agent';
+import { IAgentLogsRequest } from '@/interfaces/database/agent';
 import api from '@/utils/api';
 import { registerNextServer } from '@/utils/register-server';
 import request from '@/utils/request';
@@ -17,6 +14,7 @@ const {
   testDbConnect,
   getInputElements,
   debug,
+  listCanvasTeam,
   settingCanvas,
   uploadCanvasFile,
   trace,
@@ -28,7 +26,6 @@ const {
   fetchAgentLogs,
   fetchExternalAgentInputs,
   prompt,
-  cancelDataflow,
 } = api;
 
 const methods = {
@@ -84,6 +81,10 @@ const methods = {
     url: debug,
     method: 'post',
   },
+  listCanvasTeam: {
+    url: listCanvasTeam,
+    method: 'get',
+  },
   settingCanvas: {
     url: settingCanvas,
     method: 'post',
@@ -116,10 +117,6 @@ const methods = {
     url: prompt,
     method: 'get',
   },
-  cancelDataflow: {
-    url: cancelDataflow,
-    method: 'put',
-  },
 } as const;
 
 const agentService = registerNextServer<keyof typeof methods>(methods);
@@ -132,10 +129,6 @@ export const fetchAgentLogsByCanvasId = (
   params: IAgentLogsRequest,
 ) => {
   return request.get(methods.fetchAgentLogs.url(canvasId), { params: params });
-};
-
-export const fetchPipeLineList = (params: IPipeLineListRequest) => {
-  return request.get(api.listCanvas, { params: params });
 };
 
 export default agentService;

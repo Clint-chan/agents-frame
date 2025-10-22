@@ -22,7 +22,7 @@ const Languages = [
   'Vietnamese',
 ];
 
-export const crossLanguageOptions = Languages.map((x) => ({
+const options = Languages.map((x) => ({
   label: t('language.' + toLower(x)),
   value: x,
 }));
@@ -30,13 +30,11 @@ export const crossLanguageOptions = Languages.map((x) => ({
 type CrossLanguageItemProps = {
   name?: string;
   vertical?: boolean;
-  label?: string;
 };
 
 export const CrossLanguageFormField = ({
   name = 'prompt_config.cross_languages',
   vertical = true,
-  label,
 }: CrossLanguageItemProps) => {
   const { t } = useTranslation();
   const form = useFormContext();
@@ -55,11 +53,11 @@ export const CrossLanguageFormField = ({
           })}
         >
           <FormLabel tooltip={t('chat.crossLanguageTip')}>
-            {label || t('chat.crossLanguage')}
+            {t('chat.crossLanguage')}
           </FormLabel>
           <FormControl>
             <MultiSelect
-              options={crossLanguageOptions}
+              options={options}
               placeholder={t('fileManager.pleaseSelect')}
               maxCount={100}
               {...field}

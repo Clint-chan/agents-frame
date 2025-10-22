@@ -28,18 +28,7 @@ const NameFormSchema = z.object({
   name: z.string(),
 });
 
-type NoteNodeProps = NodeProps<INoteNode> & {
-  useWatchNoteFormChange?: typeof useWatchFormChange;
-  useWatchNoteNameFormChange?: typeof useWatchNameFormChange;
-};
-
-function NoteNode({
-  data,
-  id,
-  selected,
-  useWatchNoteFormChange,
-  useWatchNoteNameFormChange,
-}: NoteNodeProps) {
+function NoteNode({ data, id, selected }: NodeProps<INoteNode>) {
   const { t } = useTranslation();
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -52,19 +41,19 @@ function NoteNode({
     defaultValues: { name: data.name },
   });
 
-  (useWatchNoteFormChange || useWatchFormChange)(id, form);
+  useWatchFormChange(id, form);
 
-  (useWatchNoteNameFormChange || useWatchNameFormChange)(id, nameForm);
+  useWatchNameFormChange(id, nameForm);
 
   return (
     <NodeWrapper
-      className="p-0  w-full h-full flex flex-col bg-bg-component border border-state-warning rounded-lg shadow-md pb-1"
+      className="p-0  w-full h-full flex flex-col"
       selected={selected}
     >
       <NodeResizeControl minWidth={190} minHeight={128} style={controlStyle}>
         <ResizeIcon />
       </NodeResizeControl>
-      <section className="px-2 py-1 flex gap-2 items-center note-drag-handle rounded-t border-t-2 border-state-warning">
+      <section className="p-2 flex gap-2 bg-background-note items-center note-drag-handle rounded-t">
         <NotebookPen className="size-4" />
         <Form {...nameForm}>
           <form className="flex-1">
@@ -78,7 +67,7 @@ function NoteNode({
                       placeholder={t('flow.notePlaceholder')}
                       {...field}
                       type="text"
-                      className="bg-transparent border-none focus-visible:outline focus-visible:outline-text-sub-title p-1"
+                      className="bg-transparent border-none focus-visible:outline focus-visible:outline-text-sub-title"
                     />
                   </FormControl>
                   <FormMessage />
@@ -89,7 +78,7 @@ function NoteNode({
         </Form>
       </section>
       <Form {...form}>
-        <form className="flex-1 px-1 min-h-1">
+        <form className="flex-1 p-1">
           <FormField
             control={form.control}
             name="text"
@@ -98,7 +87,7 @@ function NoteNode({
                 <FormControl>
                   <Textarea
                     placeholder={t('flow.notePlaceholder')}
-                    className="resize-none rounded-none p-1 py-0 overflow-auto bg-transparent focus-visible:ring-0 border-none text-text-secondary focus-visible:ring-offset-0 !text-xs"
+                    className="resize-none rounded-none p-1 h-full overflow-auto bg-transparent focus-visible:ring-0 border-none"
                     {...field}
                   />
                 </FormControl>

@@ -27,8 +27,7 @@ from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 from api.db import StatusEnum
 from api.db.db_models import close_connection
 from api.db.services import UserService
-from api.utils.json import CustomJSONEncoder
-from api.utils import commands
+from api.utils import CustomJSONEncoder, commands
 
 from flask_mail import Mail
 from flask_session import Session

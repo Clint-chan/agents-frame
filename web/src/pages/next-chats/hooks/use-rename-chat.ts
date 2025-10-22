@@ -22,7 +22,6 @@ export const useRenameChat = () => {
       name: '',
       icon: '',
       language: 'English',
-      description: '',
       prompt_config: {
         empty_response: '',
         prologue: t('chat.setAnOpenerInitial'),
@@ -34,12 +33,11 @@ export const useRenameChat = () => {
         use_kg: false,
         reasoning: false,
         parameters: [{ key: 'knowledge', optional: false }],
-        toc_enhance: false,
       },
       llm_id: tenantInfo.data.llm_id,
       llm_setting: {},
       similarity_threshold: 0.2,
-      vector_similarity_weight: 0.3,
+      vector_similarity_weight: 0.30000000000000004,
       top_n: 8,
     }),
     [t, tenantInfo.data.llm_id],
@@ -69,8 +67,6 @@ export const useRenameChat = () => {
     (record?: IDialog) => {
       if (record) {
         setChat(record);
-      } else {
-        setChat({} as IDialog);
       }
       showChatRenameModal();
     },

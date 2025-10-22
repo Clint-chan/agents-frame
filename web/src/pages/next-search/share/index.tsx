@@ -5,7 +5,7 @@ import {
   ISearchAppDetailProps,
   useFetchSearchDetail,
 } from '../../next-searches/hooks';
-import { useCheckSettings, useGetSharedSearchParams } from '../hooks';
+import { useGetSharedSearchParams, useSearching } from '../hooks';
 import '../index.less';
 import SearchHome from '../search-home';
 import SearchingPage from '../searching';
@@ -18,9 +18,9 @@ export default function ShareSeachPage() {
   } = useFetchSearchDetail(tenantId as string);
   const [isSearching, setIsSearching] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const { openSetting: canSearch } = useCheckSettings(
-    searchData as ISearchAppDetailProps,
-  );
+  const searchingParam = useSearching({
+    data: searchData,
+  });
 
   useEffect(() => {
     if (locale && i18n.language !== locale) {
@@ -47,7 +47,6 @@ export default function ShareSeachPage() {
             isSearching={isSearching}
             searchText={searchText}
             setSearchText={setSearchText}
-            canSearch={!canSearch}
           />
         </div>
       )}

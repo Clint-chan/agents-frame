@@ -5,7 +5,6 @@ import { IMcpServer } from '@/interfaces/database/mcp';
 import { formatDate } from '@/utils/date';
 import { isPlainObject } from 'lodash';
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { McpDropdown } from './mcp-dropdown';
 import { UseBulkOperateMCPReturnType } from './use-bulk-operate-mcp';
 import { UseEditMcpReturnType } from './use-edit-mcp';
@@ -21,7 +20,6 @@ export function McpCard({
   handleSelectChange,
   showEditModal,
 }: DatasetCardProps) {
-  const { t } = useTranslation();
   const toolLength = useMemo(() => {
     const tools = data.variables?.tools;
     if (isPlainObject(tools)) {
@@ -35,12 +33,10 @@ export function McpCard({
     }
   };
   return (
-    <Card key={data.id}>
+    <Card key={data.id} className="w-64">
       <CardContent className="p-2.5 pt-2 group">
         <section className="flex justify-between pb-2">
-          <h3 className="text-base font-normal truncate flex-1 text-text-primary">
-            {data.name}
-          </h3>
+          <h3 className="text-lg font-semibold truncate flex-1">{data.name}</h3>
           <div className="space-x-4">
             <McpDropdown mcpId={data.id} showEditModal={showEditModal}>
               <MoreButton></MoreButton>
@@ -54,12 +50,14 @@ export function McpCard({
             />
           </div>
         </section>
-        <div className="flex justify-between items-end text-xs text-text-secondary">
+        <div className="flex justify-between items-end">
           <div className="w-full">
-            <div className="line-clamp-1 pb-1">
-              {toolLength} {t('mcp.cachedTools')}
+            <div className="text-base font-semibold mb-3 line-clamp-1 text-text-secondary">
+              {toolLength} cached tools
             </div>
-            <p>{formatDate(data.update_date)}</p>
+            <p className="text-sm text-text-secondary">
+              {formatDate(data.update_date)}
+            </p>
           </div>
         </div>
       </CardContent>

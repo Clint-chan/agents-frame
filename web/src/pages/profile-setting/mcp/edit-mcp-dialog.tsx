@@ -1,9 +1,7 @@
 import { Collapse } from '@/components/collapse';
 import { Button, ButtonLoading } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -123,44 +121,32 @@ export function EditMcpDialog({
           form={form}
           setFieldChanged={setFieldChanged}
         ></EditMcpForm>
-        <Card>
-          <CardContent className="p-3">
-            <Collapse
-              title={
-                <div>
-                  {nextTools?.length || 0} {t('mcp.toolsAvailable')}
-                </div>
-              }
-              open={collapseOpen}
-              onOpenChange={setCollapseOpen}
-              rightContent={
-                <Button
-                  variant={'transparent'}
-                  form={FormId}
-                  type="submit"
-                  onClick={handleTest}
-                  className="border-none p-0 hover:bg-transparent"
-                >
-                  <RefreshCw
-                    className={cn('text-text-secondary', {
-                      'animate-spin': testLoading,
-                    })}
-                  />
-                </Button>
-              }
+        <Collapse
+          title={<div>{nextTools?.length || 0} tools available</div>}
+          open={collapseOpen}
+          onOpenChange={setCollapseOpen}
+          rightContent={
+            <Button
+              variant={'ghost'}
+              form={FormId}
+              type="submit"
+              onClick={handleTest}
             >
-              <div className="overflow-auto max-h-80 divide-y bg-bg-card rounded-md px-2.5">
-                {nextTools?.map((x) => (
-                  <McpToolCard key={x.name} data={x}></McpToolCard>
-                ))}
-              </div>
-            </Collapse>
-          </CardContent>
-        </Card>
+              <RefreshCw
+                className={cn('text-accent-primary', {
+                  'animate-spin': testLoading,
+                })}
+              />
+            </Button>
+          }
+        >
+          <div className="space-y-2.5 overflow-auto max-h-80">
+            {nextTools?.map((x) => (
+              <McpToolCard key={x.name} data={x}></McpToolCard>
+            ))}
+          </div>
+        </Collapse>
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">{t('common.cancel')}</Button>
-          </DialogClose>
           <ButtonLoading
             type="submit"
             form={FormId}

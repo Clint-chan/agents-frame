@@ -4,9 +4,8 @@ import { Handle, HandleProps } from '@xyflow/react';
 import { Plus } from 'lucide-react';
 import { useMemo } from 'react';
 import { HandleContext } from '../../context';
-import useGraphStore from '../../store';
 import { useDropdownManager } from '../context';
-import { NextStepDropdown } from './dropdown/next-step-dropdown';
+import { InnerNextStepDropdown } from './dropdown/next-step-dropdown';
 
 export function CommonHandle({
   className,
@@ -17,8 +16,6 @@ export function CommonHandle({
 
   const { canShowDropdown, setActiveDropdown, clearActiveDropdown } =
     useDropdownManager();
-
-  const { hasChildNode } = useGraphStore((state) => state);
 
   const value = useMemo(
     () => ({
@@ -42,10 +39,6 @@ export function CommonHandle({
         onClick={(e) => {
           e.stopPropagation();
 
-          if (hasChildNode(nodeId)) {
-            return;
-          }
-
           if (!canShowDropdown()) {
             return;
           }
@@ -56,15 +49,14 @@ export function CommonHandle({
       >
         <Plus className="size-3 pointer-events-none text-text-title-invert" />
         {visible && (
-          <NextStepDropdown
+          <InnerNextStepDropdown
             hideModal={() => {
               hideModal();
               clearActiveDropdown();
             }}
-            nodeId={nodeId}
           >
             <span></span>
-          </NextStepDropdown>
+          </InnerNextStepDropdown>
         )}
       </Handle>
     </HandleContext.Provider>

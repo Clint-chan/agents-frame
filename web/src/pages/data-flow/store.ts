@@ -14,6 +14,7 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
 } from '@xyflow/react';
+import { omit } from 'lodash';
 import differenceWith from 'lodash/differenceWith';
 import intersectionWith from 'lodash/intersectionWith';
 import lodashSet from 'lodash/set';
@@ -58,6 +59,7 @@ export type RFState = {
   updateNode: (node: RAGFlowNodeType) => void;
   addEdge: (connection: Connection) => void;
   getEdge: (id: string) => Edge | undefined;
+  updateFormDataOnConnect: (connection: Connection) => void;
   updateSwitchFormData: (
     source: string,
     sourceHandle?: string | null,
@@ -65,6 +67,7 @@ export type RFState = {
     isConnecting?: boolean,
   ) => void;
   duplicateNode: (id: string, name: string) => void;
+  duplicateIterationNode: (id: string, name: string) => void;
   deleteEdge: () => void;
   deleteEdgeById: (id: string) => void;
   deleteNodeById: (id: string) => void;
@@ -86,7 +89,6 @@ export type RFState = {
   ) => void; // Deleting a condition of a classification operator will delete the related edge
   findAgentToolNodeById: (id: string | null) => string | undefined;
   selectNodeIds: (nodeIds: string[]) => void;
-  hasChildNode: (nodeId: string) => boolean;
 };
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
@@ -124,9 +126,11 @@ const useGraphStore = create<RFState>()(
         setEdges(mapEdgeMouseEvent(edges, edgeId, false));
       },
       onConnect: (connection: Connection) => {
+        const { updateFormDataOnConnect } = get();
         set({
           edges: addEdge(connection, get().edges),
         });
+        updateFormDataOnConnect(connection);
       },
       onSelectionChange: ({ nodes, edges }: OnSelectionChangeParams) => {
         set({
@@ -213,13 +217,36 @@ const useGraphStore = create<RFState>()(
         set({
           edges: addEdge(connection, get().edges),
         });
+        //  TODO: This may not be reasonable. You need to choose between listening to changes in the form.
+        get().updateFormDataOnConnect(connection);
       },
       getEdge: (id: string) => {
         return get().edges.find((x) => x.id === id);
       },
+      updateFormDataOnConnect: (connection: Connection) => {
+        const { getOperatorTypeFromId, updateSwitchFormData } = get();
+        const { source, target, sourceHandle } = connection;
+        const operatorType = getOperatorTypeFromId(source);
+        if (source) {
+          switch (operatorType) {
+            case Operator.Switch: {
+              updateSwitchFormData(source, sourceHandle, target, true);
+              break;
+            }
+            default:
+              break;
+          }
+        }
+      },
       duplicateNode: (id: string, name: string) => {
-        const { getNode, addNode, generateNodeName } = get();
+        const { getNode, addNode, generateNodeName, duplicateIterationNode } =
+          get();
         const node = getNode(id);
+
+        if (node?.data.label === Operator.Iteration) {
+          duplicateIterationNode(id, name);
+          return;
+        }
 
         addNode({
           ...(node || {}),
@@ -230,6 +257,35 @@ const useGraphStore = create<RFState>()(
           ...generateDuplicateNode(node?.position, node?.data?.label),
         });
       },
+      duplicateIterationNode: (id: string, name: string) => {
+        const { getNode, generateNodeName, nodes } = get();
+        const node = getNode(id);
+
+        const iterationNode: RAGFlowNodeType = {
+          ...(node || {}),
+          data: {
+            ...(node?.data || { label: Operator.Iteration, form: {} }),
+            name: generateNodeName(name),
+          },
+          ...generateDuplicateNode(node?.position, node?.data?.label),
+        };
+
+        const children = nodes
+          .filter((x) => x.parentId === node?.id)
+          .map((x) => ({
+            ...(x || {}),
+            data: {
+              ...duplicateNodeForm(x?.data),
+              name: generateNodeName(x.data.name),
+            },
+            ...omit(generateDuplicateNode(x?.position, x?.data?.label), [
+              'position',
+            ]),
+            parentId: iterationNode.id,
+          }));
+
+        set({ nodes: nodes.concat(iterationNode, ...children) });
+      },
       deleteEdge: () => {
         const { edges, selectedEdgeIds } = get();
         set({
@@ -239,15 +295,55 @@ const useGraphStore = create<RFState>()(
         });
       },
       deleteEdgeById: (id: string) => {
-        const { edges } = get();
+        const {
+          edges,
+          updateNodeForm,
+          getOperatorTypeFromId,
+          updateSwitchFormData,
+        } = get();
+        const currentEdge = edges.find((x) => x.id === id);
 
+        if (currentEdge) {
+          const { source, sourceHandle, target } = currentEdge;
+          const operatorType = getOperatorTypeFromId(source);
+          // After deleting the edge, set the corresponding field in the node's form field to undefined
+          switch (operatorType) {
+            case Operator.Relevant:
+              updateNodeForm(source, {
+                [sourceHandle as string]: undefined,
+              });
+              break;
+            // case Operator.Categorize:
+            //   if (sourceHandle)
+            //     updateNodeForm(source, undefined, [
+            //       'category_description',
+            //       sourceHandle,
+            //       'to',
+            //     ]);
+            //   break;
+            case Operator.Switch: {
+              updateSwitchFormData(source, sourceHandle, target, false);
+              break;
+            }
+            default:
+              break;
+          }
+        }
         set({
           edges: edges.filter((edge) => edge.id !== id),
         });
       },
       deleteNodeById: (id: string) => {
-        const { nodes, edges } = get();
-
+        const {
+          nodes,
+          edges,
+          getOperatorTypeFromId,
+          deleteAgentDownstreamNodesById,
+        } = get();
+        if (getOperatorTypeFromId(id) === Operator.Agent) {
+          deleteAgentDownstreamNodesById(id);
+          return;
+        }
         set({
           nodes: nodes.filter((node) => node.id !== id),
           edges: edges
@@ -429,10 +525,6 @@ const useGraphStore = create<RFState>()(
             selected: nodeIds.includes(node.id),
           })),
         );
-      },
-      hasChildNode: (nodeId) => {
-        const { edges } = get();
-        return edges.some((edge) => edge.source === nodeId);
       },
     })),
     { name: 'graph', trace: true },

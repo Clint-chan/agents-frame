@@ -12,15 +12,15 @@ import {
   ControlButton,
   Controls,
   NodeTypes,
-  OnConnectEnd,
   Position,
   ReactFlow,
   ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { NotebookPen } from 'lucide-react';
-import { memo, useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AgentBackground } from '../components/background';
 import { AgentInstanceContext, HandleContext } from '../context';
 
 import FormSheet from '../form-sheet/next';
@@ -30,34 +30,52 @@ import { useBeforeDelete } from '../hooks/use-before-delete';
 import { useMoveNote } from '../hooks/use-move-note';
 import { useDropdownManager } from './context';
 
-import { AgentBackground } from '@/components/canvas/background';
-import Spotlight from '@/components/spotlight';
-import { useRunDataflow } from '../hooks/use-run-dataflow';
 import {
   useHideFormSheetOnNodeDeletion,
   useShowDrawer,
 } from '../hooks/use-show-drawer';
 import RunSheet from '../run-sheet';
-import useGraphStore from '../store';
 import { ButtonEdge } from './edge';
 import styles from './index.less';
 import { RagNode } from './node';
+import { AgentNode } from './node/agent-node';
 import { BeginNode } from './node/begin-node';
-import { NextStepDropdown } from './node/dropdown/next-step-dropdown';
-import { ExtractorNode } from './node/extractor-node';
+import { CategorizeNode } from './node/categorize-node';
+import { InnerNextStepDropdown } from './node/dropdown/next-step-dropdown';
+import { GenerateNode } from './node/generate-node';
+import { InvokeNode } from './node/invoke-node';
+import { IterationNode, IterationStartNode } from './node/iteration-node';
+import { KeywordNode } from './node/keyword-node';
+import { LogicNode } from './node/logic-node';
+import { MessageNode } from './node/message-node';
 import NoteNode from './node/note-node';
-import ParserNode from './node/parser-node';
-import { SplitterNode } from './node/splitter-node';
-import TokenizerNode from './node/tokenizer-node';
+import { RelevantNode } from './node/relevant-node';
+import { RetrievalNode } from './node/retrieval-node';
+import { RewriteNode } from './node/rewrite-node';
+import { SwitchNode } from './node/switch-node';
+import { TemplateNode } from './node/template-node';
+import { ToolNode } from './node/tool-node';
 
 export const nodeTypes: NodeTypes = {
   ragNode: RagNode,
+  categorizeNode: CategorizeNode,
   beginNode: BeginNode,
+  relevantNode: RelevantNode,
+  logicNode: LogicNode,
   noteNode: NoteNode,
-  parserNode: ParserNode,
-  tokenizerNode: TokenizerNode,
-  splitterNode: SplitterNode,
-  contextNode: ExtractorNode,
+  switchNode: SwitchNode,
+  generateNode: GenerateNode,
+  retrievalNode: RetrievalNode,
+  messageNode: MessageNode,
+  rewriteNode: RewriteNode,
+  keywordNode: KeywordNode,
+  invokeNode: InvokeNode,
+  templateNode: TemplateNode,
+  // emailNode: EmailNode,
+  group: IterationNode,
+  iterationStartNode: IterationStartNode,
+  agentNode: AgentNode,
+  toolNode: ToolNode,
 };
 
 const edgeTypes = {
@@ -67,10 +85,9 @@ const edgeTypes = {
 interface IProps {
   drawerVisible: boolean;
   hideDrawer(): void;
-  showLogSheet(): void;
 }
 
-function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
+function AgentCanvas({ drawerVisible, hideDrawer }: IProps) {
   const { t } = useTranslation();
   const {
     nodes,
@@ -98,6 +115,7 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
     chatVisible,
     runVisible,
     hideRunOrChatDrawer,
+    showChatModal,
     showFormDrawer,
   } = useShowDrawer({
     drawerVisible,
@@ -117,7 +135,6 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
   useHideFormSheetOnNodeDeletion({ hideFormDrawer });
 
   const { visible, hideModal, showModal } = useSetModalState();
-
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
 
   const isConnectedRef = useRef(false);
@@ -129,8 +146,6 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
   const preventCloseRef = useRef(false);
 
   const { setActiveDropdown, clearActiveDropdown } = useDropdownManager();
-
-  const { hasChildNode } = useGraphStore((state) => state);
 
   const onPaneClick = useCallback(() => {
     hideFormDrawer();
@@ -153,17 +168,12 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
     clearActiveDropdown,
   ]);
 
-  const { run, loading: running } = useRunDataflow(
-    showLogSheet!,
-    hideRunOrChatDrawer,
-  );
-
   const onConnect = (connection: Connection) => {
     originalOnConnect(connection);
     isConnectedRef.current = true;
   };
 
-  const onConnectStart = (event: any, params: any) => {
+  const OnConnectStart = (event: any, params: any) => {
     isConnectedRef.current = false;
 
     if (params && params.nodeId && params.handleId) {
@@ -176,18 +186,7 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
     }
   };
 
-  const onConnectEnd: OnConnectEnd = (event, connectionState) => {
-    const target = event.target as HTMLElement;
-    const nodeId = connectionState.fromNode?.id;
-
-    // Events triggered by Handle are directly interrupted
-    if (
-      target?.classList.contains('react-flow__handle') ||
-      (nodeId && hasChildNode(nodeId))
-    ) {
-      return;
-    }
-
+  const OnConnectEnd = (event: MouseEvent | TouchEvent) => {
     if ('clientX' in event && 'clientY' in event) {
       const { clientX, clientY } = event;
       setDropdownPosition({ x: clientX, y: clientY });
@@ -203,7 +202,7 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
   };
 
   return (
-    <div className={cn(styles.canvasWrapper, 'px-5 pb-5')}>
+    <div className={styles.canvasWrapper}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         style={{ position: 'absolute', top: 10, left: 0 }}
@@ -235,8 +234,8 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
+          onConnectStart={OnConnectStart}
+          onConnectEnd={OnConnectEnd}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           onInit={setReactFlowInstance}
@@ -262,7 +261,6 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
           onBeforeDelete={handleBeforeDelete}
         >
           <AgentBackground></AgentBackground>
-          <Spotlight className="z-0" opcity={0.7} coverage={70} />
           <Controls position={'bottom-center'} orientation="horizontal">
             <ControlButton>
               <Tooltip>
@@ -284,16 +282,15 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
               isFromConnectionDrag: true,
             }}
           >
-            <NextStepDropdown
+            <InnerNextStepDropdown
               hideModal={() => {
                 hideModal();
                 clearActiveDropdown();
               }}
               position={dropdownPosition}
-              nodeId={connectionStartRef.current?.nodeId || ''}
             >
               <span></span>
-            </NextStepDropdown>
+            </InnerNextStepDropdown>
           </HandleContext.Provider>
         )}
       </AgentInstanceContext.Provider>
@@ -319,12 +316,11 @@ function DataFlowCanvas({ drawerVisible, hideDrawer, showLogSheet }: IProps) {
       {runVisible && (
         <RunSheet
           hideModal={hideRunOrChatDrawer}
-          run={run}
-          loading={running}
+          showModal={showChatModal}
         ></RunSheet>
       )}
     </div>
   );
 }
 
-export default memo(DataFlowCanvas);
+export default AgentCanvas;

@@ -1,4 +1,3 @@
-import { CardContainer } from '@/components/card-container';
 import { IconFont } from '@/components/icon-font';
 import ListFilterBar from '@/components/list-filter-bar';
 import { RenameDialog } from '@/components/rename-dialog';
@@ -6,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { RAGFlowPagination } from '@/components/ui/ragflow-pagination';
 import { useTranslate } from '@/hooks/common-hooks';
 import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import { useFetchSearchList, useRenameSearch } from './hooks';
 import { SearchCard } from './search-card';
 
 export default function SearchList() {
   // const { data } = useFetchFlowList();
   const { t } = useTranslate('search');
-  // const [isEdit, setIsEdit] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
   const {
     data: list,
     searchParams,
@@ -36,11 +36,11 @@ export default function SearchList() {
     });
   };
   const openCreateModalFun = () => {
-    // setIsEdit(false);
+    setIsEdit(false);
     showSearchRenameModal();
   };
   const handlePageChange = (page: number, pageSize: number) => {
-    // setIsEdit(false);
+    setIsEdit(false);
     setSearchListParams({ ...searchParams, page, page_size: pageSize });
   };
 
@@ -65,7 +65,7 @@ export default function SearchList() {
         </ListFilterBar>
       </div>
       <div className="flex-1">
-        <CardContainer className="max-h-[calc(100dvh-280px)] overflow-auto px-8">
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 max-h-[calc(100dvh-280px)] overflow-auto px-8">
           {list?.data.search_apps.map((x) => {
             return (
               <SearchCard
@@ -77,7 +77,7 @@ export default function SearchList() {
               ></SearchCard>
             );
           })}
-        </CardContainer>
+        </div>
       </div>
       {list?.data.total && list?.data.total > 0 && (
         <div className="px-8 mb-4">

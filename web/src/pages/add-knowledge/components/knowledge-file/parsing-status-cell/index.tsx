@@ -124,8 +124,8 @@ export const ParsingStatusCell = ({ record }: IProps) => {
         onConfirm={handleOperationIconClick(true)}
         onCancel={handleOperationIconClick(false)}
         disabled={record.chunk_num === 0}
-        okText={t('common.yes')}
-        cancelText={t('common.no')}
+        okText={t('common.ok')}
+        cancelText={t('common.cancel')}
       >
         <div
           className={classNames(styles.operationIcon)}

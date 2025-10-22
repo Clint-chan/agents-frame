@@ -291,7 +291,7 @@ export const RAGFlowSelect = forwardRef<
           onReset={handleReset}
           allowClear={allowClear}
           ref={ref}
-          className={cn('bg-bg-base', triggerClassName)}
+          className={triggerClassName}
         >
           <SelectValue placeholder={placeholder}>{label}</SelectValue>
         </SelectTrigger>

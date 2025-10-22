@@ -23,7 +23,7 @@ import { ITraceData } from '@/interfaces/database/agent';
 import { cn } from '@/lib/utils';
 import { t } from 'i18next';
 import { get, isEmpty, isEqual, uniqWith } from 'lodash';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import JsonView from 'react18-json-view';
 import { Operator } from '../constant';
 import { useCacheChatLog } from '../hooks/use-cache-chat-log';
@@ -116,12 +116,12 @@ export const WorkFlowTimeline = ({
   isShare,
 }: LogFlowTimelineProps) => {
   // const getNode = useGraphStore((state) => state.getNode);
+  const [isStopFetchTrace, setISStopFetchTrace] = useState(false);
 
-  const {
-    data: traceData,
-    setMessageId,
-    setISStopFetchTrace,
-  } = useFetchMessageTrace(canvasId);
+  const { data: traceData, setMessageId } = useFetchMessageTrace(
+    isStopFetchTrace,
+    canvasId,
+  );
 
   useEffect(() => {
     setMessageId(currentMessageId);
@@ -133,7 +133,7 @@ export const WorkFlowTimeline = ({
 
   useEffect(() => {
     setISStopFetchTrace(!sendLoading);
-  }, [sendLoading, setISStopFetchTrace]);
+  }, [sendLoading]);
 
   const startedNodeList = useMemo(() => {
     const finish = currentEventListWithoutMessage?.some(
@@ -151,7 +151,7 @@ export const WorkFlowTimeline = ({
       }
       return pre;
     }, []);
-  }, [currentEventListWithoutMessage, sendLoading, setISStopFetchTrace]);
+  }, [currentEventListWithoutMessage, sendLoading]);
 
   const getElapsedTime = (nodeId: string) => {
     if (nodeId === 'begin') {

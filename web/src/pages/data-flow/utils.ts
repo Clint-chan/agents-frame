@@ -1,36 +1,56 @@
-import { IAgentForm } from '@/interfaces/database/agent';
+import {
+  IAgentForm,
+  ICategorizeForm,
+  ICategorizeItem,
+  ICategorizeItemResult,
+} from '@/interfaces/database/agent';
 import { DSLComponents, RAGFlowNodeType } from '@/interfaces/database/flow';
-import { Edge, XYPosition } from '@xyflow/react';
+import { removeUselessFieldsFromValues } from '@/utils/form';
+import { Edge, Node, XYPosition } from '@xyflow/react';
 import { FormInstance, FormListFieldData } from 'antd';
 import { humanId } from 'human-id';
-import { curry, get, intersectionWith, isEmpty, isEqual, sample } from 'lodash';
+import { curry, get, intersectionWith, isEqual, omit, sample } from 'lodash';
 import pipe from 'lodash/fp/pipe';
 import isObject from 'lodash/isObject';
 import {
   CategorizeAnchorPointPositions,
-  FileType,
-  FileTypeSuffixMap,
   NoDebugOperatorsList,
   NodeHandleId,
   Operator,
 } from './constant';
-import { ExtractorFormSchemaType } from './form/extractor-form';
-import { HierarchicalMergerFormSchemaType } from './form/hierarchical-merger-form';
-import { ParserFormSchemaType } from './form/parser-form';
-import { SplitterFormSchemaType } from './form/splitter-form';
-import { IPosition } from './interface';
+import { BeginQuery, IPosition } from './interface';
+
+function buildAgentExceptionGoto(edges: Edge[], nodeId: string) {
+  const exceptionEdges = edges.filter(
+    (x) =>
+      x.source === nodeId && x.sourceHandle === NodeHandleId.AgentException,
+  );
+
+  return exceptionEdges.map((x) => x.target);
+}
 
 const buildComponentDownstreamOrUpstream = (
   edges: Edge[],
   nodeId: string,
   isBuildDownstream = true,
+  nodes: Node[],
 ) => {
   return edges
     .filter((y) => {
+      const node = nodes.find((x) => x.id === nodeId);
       let isNotUpstreamTool = true;
       let isNotUpstreamAgent = true;
       let isNotExceptionGoto = true;
-
+      if (isBuildDownstream && node?.data.label === Operator.Agent) {
+        isNotExceptionGoto = y.sourceHandle !== NodeHandleId.AgentException;
+        // Exclude the tool operator downstream of the agent operator
+        isNotUpstreamTool = !y.target.startsWith(Operator.Tool);
+        // Exclude the agent operator downstream of the agent operator
+        isNotUpstreamAgent = !(
+          y.target.startsWith(Operator.Agent) &&
+          y.targetHandle === NodeHandleId.AgentTop
+        );
+      }
       return (
         y[isBuildDownstream ? 'source' : 'target'] === nodeId &&
         isNotUpstreamTool &&
@@ -43,12 +63,79 @@ const buildComponentDownstreamOrUpstream = (
 
 const removeUselessDataInTheOperator = curry(
   (operatorName: string, params: Record<string, unknown>) => {
-    // if (operatorName === Operator.Categorize) {
-    //   return removeUselessFieldsFromValues(params, '');
-    // }
+    if (
+      operatorName === Operator.Generate ||
+      operatorName === Operator.Categorize
+    ) {
+      return removeUselessFieldsFromValues(params, '');
+    }
     return params;
   },
 );
+// initialize data for operators without parameters
+// const initializeOperatorParams = curry((operatorName: string, values: any) => {
+//   if (isEmpty(values)) {
+//     return initialFormValuesMap[operatorName as Operator];
+//   }
+//   return values;
+// });
+
+function buildAgentTools(edges: Edge[], nodes: Node[], nodeId: string) {
+  const node = nodes.find((x) => x.id === nodeId);
+  const params = { ...(node?.data.form ?? {}) };
+  if (node && node.data.label === Operator.Agent) {
+    const bottomSubAgentEdges = edges.filter(
+      (x) => x.source === nodeId && x.sourceHandle === NodeHandleId.AgentBottom,
+    );
+
+    (params as IAgentForm).tools = (params as IAgentForm).tools.concat(
+      bottomSubAgentEdges.map((x) => {
+        const {
+          params: formData,
+          id,
+          name,
+        } = buildAgentTools(edges, nodes, x.target);
+
+        return {
+          component_name: Operator.Agent,
+          id,
+          name: name as string, // Cast name to string and provide fallback
+          params: { ...formData },
+        };
+      }),
+    );
+  }
+  return { params, name: node?.data.name, id: node?.id };
+}
+
+function filterTargetsBySourceHandleId(edges: Edge[], handleId: string) {
+  return edges.filter((x) => x.sourceHandle === handleId).map((x) => x.target);
+}
+
+function buildCategorize(edges: Edge[], nodes: Node[], nodeId: string) {
+  const node = nodes.find((x) => x.id === nodeId);
+  const params = { ...(node?.data.form ?? {}) } as ICategorizeForm;
+  if (node && node.data.label === Operator.Categorize) {
+    const subEdges = edges.filter((x) => x.source === nodeId);
+
+    const items = params.items || [];
+
+    const nextCategoryDescription = items.reduce<
+      ICategorizeForm['category_description']
+    >((pre, val) => {
+      const key = val.name;
+      pre[key] = {
+        ...omit(val, 'name', 'uuid'),
+        examples: val.examples?.map((x) => x.value) || [],
+        to: filterTargetsBySourceHandleId(subEdges, val.uuid),
+      };
+      return pre;
+    }, {});
+
+    params.category_description = nextCategoryDescription;
+  }
+  return omit(params, 'items');
+}
 
 const buildOperatorParams = (operatorName: string) =>
   pipe(
@@ -56,98 +143,13 @@ const buildOperatorParams = (operatorName: string) =>
     // initializeOperatorParams(operatorName), // Final processing, for guarantee
   );
 
-const ExcludeOperators = [Operator.Note];
+const ExcludeOperators = [Operator.Note, Operator.Tool];
 
 export function isBottomSubAgent(edges: Edge[], nodeId?: string) {
   const edge = edges.find(
     (x) => x.target === nodeId && x.targetHandle === NodeHandleId.AgentTop,
   );
   return !!edge;
-}
-// Because the array of react-hook-form must be object data,
-// it needs to be converted into a simple data type array required by the backend
-function transformObjectArrayToPureArray(
-  list: Array<Record<string, any>>,
-  field: string,
-) {
-  return Array.isArray(list)
-    ? list.filter((x) => !isEmpty(x[field])).map((y) => y[field])
-    : [];
-}
-
-function transformParserParams(params: ParserFormSchemaType) {
-  const setups = params.setups.reduce<
-    Record<string, ParserFormSchemaType['setups'][0]>
-  >((pre, cur) => {
-    if (cur.fileFormat) {
-      let filteredSetup: Partial<
-        ParserFormSchemaType['setups'][0] & { suffix: string[] }
-      > = {
-        output_format: cur.output_format,
-        suffix: FileTypeSuffixMap[cur.fileFormat as FileType],
-      };
-
-      switch (cur.fileFormat) {
-        case FileType.PDF:
-          filteredSetup = {
-            ...filteredSetup,
-            parse_method: cur.parse_method,
-            lang: cur.lang,
-          };
-          break;
-        case FileType.Image:
-          filteredSetup = {
-            ...filteredSetup,
-            parse_method: cur.parse_method,
-            lang: cur.lang,
-            system_prompt: cur.system_prompt,
-          };
-          break;
-        case FileType.Email:
-          filteredSetup = {
-            ...filteredSetup,
-            fields: cur.fields,
-          };
-          break;
-        case FileType.Video:
-        case FileType.Audio:
-          filteredSetup = {
-            ...filteredSetup,
-            llm_id: cur.llm_id,
-          };
-          break;
-        default:
-          break;
-      }
-
-      pre[cur.fileFormat] = filteredSetup;
-    }
-    return pre;
-  }, {});
-
-  return { ...params, setups };
-}
-
-function transformSplitterParams(params: SplitterFormSchemaType) {
-  return {
-    ...params,
-    overlapped_percent: Number(params.overlapped_percent) / 100,
-    delimiters: transformObjectArrayToPureArray(params.delimiters, 'value'),
-  };
-}
-
-function transformHierarchicalMergerParams(
-  params: HierarchicalMergerFormSchemaType,
-) {
-  const levels = params.levels.map((x) =>
-    transformObjectArrayToPureArray(x.expressions, 'expression'),
-  );
-
-  return { ...params, hierarchy: Number(params.hierarchy), levels };
-}
-
-function transformExtractorParams(params: ExtractorFormSchemaType) {
-  return { ...params, prompts: [{ content: params.prompts, role: 'user' }] };
 }
 
 // construct a dsl based on the node information of the graph
@@ -170,19 +172,16 @@ export const buildDslComponentsByGraph = (
       let params = x?.data.form ?? {};
 
       switch (operatorName) {
-        case Operator.Parser:
-          params = transformParserParams(params);
+        case Operator.Agent: {
+          const { params: formData } = buildAgentTools(edges, nodes, id);
+          params = {
+            ...formData,
+            exception_goto: buildAgentExceptionGoto(edges, id),
+          };
           break;
-
-        case Operator.Splitter:
-          params = transformSplitterParams(params);
-          break;
-
-        case Operator.HierarchicalMerger:
-          params = transformHierarchicalMergerParams(params);
-          break;
-        case Operator.Extractor:
-          params = transformExtractorParams(params);
+        }
+        case Operator.Categorize:
+          params = buildCategorize(edges, nodes, id);
           break;
 
         default:
@@ -195,8 +194,8 @@ export const buildDslComponentsByGraph = (
           component_name: operatorName,
           params: buildOperatorParams(operatorName)(params) ?? {},
         },
-        downstream: buildComponentDownstreamOrUpstream(edges, id, true),
-        upstream: buildComponentDownstreamOrUpstream(edges, id, false),
+        downstream: buildComponentDownstreamOrUpstream(edges, id, true, nodes),
+        upstream: buildComponentDownstreamOrUpstream(edges, id, false, nodes),
         parent_id: x?.parentId,
       };
     });
@@ -295,6 +294,10 @@ export const getOtherFieldValues = (
         x !== form.getFieldValue([formListName, field.name, latestField]),
     );
 
+export const generateSwitchHandleText = (idx: number) => {
+  return `Case ${idx + 1}`;
+};
+
 export const getNodeDragHandle = (nodeType?: string) => {
   return nodeType === Operator.Note ? '.note-drag-handle' : undefined;
 };
@@ -350,6 +353,25 @@ export const generateNodeNamesWithIncreasingIndex = (
 export const duplicateNodeForm = (nodeData?: RAGFlowNodeType['data']) => {
   const form: Record<string, any> = { ...(nodeData?.form ?? {}) };
 
+  // Delete the downstream node corresponding to the to field of the Categorize operator
+  if (nodeData?.label === Operator.Categorize) {
+    form.category_description = Object.keys(form.category_description).reduce<
+      Record<string, Record<string, any>>
+    >((pre, cur) => {
+      pre[cur] = {
+        ...form.category_description[cur],
+        to: undefined,
+      };
+      return pre;
+    }, {});
+  }
+
+  // Delete the downstream nodes corresponding to the yes and no fields of the Relevant operator
+  if (nodeData?.label === Operator.Relevant) {
+    form.yes = undefined;
+    form.no = undefined;
+  }
+
   return {
     ...(nodeData ?? { label: '' }),
     form,
@@ -363,6 +385,40 @@ export const getDrawerWidth = () => {
 export const needsSingleStepDebugging = (label: string) => {
   return !NoDebugOperatorsList.some((x) => (label as Operator) === x);
 };
+
+// Get the coordinates of the node relative to the Iteration node
+export function getRelativePositionToIterationNode(
+  nodes: RAGFlowNodeType[],
+  position?: XYPosition, // relative position
+) {
+  if (!position) {
+    return;
+  }
+
+  const iterationNodes = nodes.filter(
+    (node) => node.data.label === Operator.Iteration,
+  );
+
+  for (const iterationNode of iterationNodes) {
+    const {
+      position: { x, y },
+      width,
+      height,
+    } = iterationNode;
+    const halfWidth = (width || 0) / 2;
+    if (
+      position.x >= x - halfWidth &&
+      position.x <= x + halfWidth &&
+      position.y >= y &&
+      position.y <= y + (height || 0)
+    ) {
+      return {
+        parentId: iterationNode.id,
+        position: { x: position.x - x + halfWidth, y: position.y - y },
+      };
+    }
+  }
+}
 
 export const generateDuplicateNode = (
   position?: XYPosition,
@@ -398,8 +454,68 @@ export function convertToObjectArray(list: Array<string | number | boolean>) {
   return list.map((x) => ({ value: x }));
 }
 
+/**
+   * convert the following object into a list
+   * 
+   * {
+      "product_related": {
+      "description": "The question is about product usage, appearance and how it works.",
+      "examples": "Why it always beaming?\nHow to install it onto the wall?\nIt leaks, what to do?",
+      "to": "generate:0"
+      }
+      }
+*/
+export const buildCategorizeListFromObject = (
+  categorizeItem: ICategorizeItemResult,
+) => {
+  // Categorize's to field has two data sources, with edges as the data source.
+  // Changes in the edge or to field need to be synchronized to the form field.
+  return Object.keys(categorizeItem)
+    .reduce<Array<ICategorizeItem>>((pre, cur) => {
+      // synchronize edge data to the to field
+
+      pre.push({
+        name: cur,
+        ...categorizeItem[cur],
+        examples: convertToObjectArray(categorizeItem[cur].examples),
+      });
+      return pre;
+    }, [])
+    .sort((a, b) => a.index - b.index);
+};
+
+/**
+   * Convert the list in the following form into an object
+   * {
+    "items": [
+      {
+        "name": "Categorize 1",
+        "description": "111",
+        "examples": ["ddd"],
+        "to": "Retrieval:LazyEelsStick"
+      }
+     ]
+    }
+*/
+export const buildCategorizeObjectFromList = (list: Array<ICategorizeItem>) => {
+  return list.reduce<ICategorizeItemResult>((pre, cur) => {
+    if (cur?.name) {
+      pre[cur.name] = {
+        ...omit(cur, 'name', 'examples'),
+        examples: convertToStringArray(cur.examples) as string[],
+      };
+    }
+    return pre;
+  }, {});
+};
+
 export function getAgentNodeTools(agentNode?: RAGFlowNodeType) {
   const tools: IAgentForm['tools'] = get(agentNode, 'data.form.tools', []);
+  return tools;
+}
+
+export function getAgentNodeMCP(agentNode?: RAGFlowNodeType) {
+  const tools: IAgentForm['mcp'] = get(agentNode, 'data.form.mcp', []);
   return tools;
 }
 
@@ -421,4 +537,22 @@ export function mapEdgeMouseEvent(
   );
 
   return nextEdges;
+}
+
+export function buildBeginQueryWithObject(
+  inputs: Record<string, BeginQuery>,
+  values: BeginQuery[],
+) {
+  const nextInputs = Object.keys(inputs).reduce<Record<string, BeginQuery>>(
+    (pre, key) => {
+      const item = values.find((x) => x.key === key);
+      if (item) {
+        pre[key] = { ...item };
+      }
+      return pre;
+    },
+    {},
+  );
+
+  return nextInputs;
 }

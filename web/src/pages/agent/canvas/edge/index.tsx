@@ -29,10 +29,7 @@ function InnerButtonEdge({
   data,
   sourceHandleId,
 }: EdgeProps<Edge<{ isHovered: boolean }>>) {
-  const { deleteEdgeById, getOperatorTypeFromId } = useGraphStore(
-    (state) => state,
-  );
-
+  const deleteEdgeById = useGraphStore((state) => state.deleteEdgeById);
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -42,21 +39,8 @@ function InnerButtonEdge({
     targetPosition,
   });
   const selectedStyle = useMemo(() => {
-    return selected
-      ? { strokeWidth: 1, stroke: 'rgb(var(--accent-primary))' }
-      : {};
+    return selected ? { strokeWidth: 1, stroke: 'rgba(76, 164, 231, 1)' } : {};
   }, [selected]);
-
-  const isTargetPlaceholder = useMemo(() => {
-    return getOperatorTypeFromId(target) === Operator.Placeholder;
-  }, [getOperatorTypeFromId, target]);
-
-  const placeholderHighlightStyle = useMemo(() => {
-    const isHighlighted = isTargetPlaceholder;
-    return isHighlighted
-      ? { strokeWidth: 2, stroke: 'rgb(var(--accent-primary))' }
-      : {};
-  }, [isTargetPlaceholder]);
 
   const onEdgeClick = () => {
     deleteEdgeById(id);
@@ -65,44 +49,48 @@ function InnerButtonEdge({
   // highlight the nodes that the workflow passes through
   const { data: flowDetail } = useFetchAgent();
 
-  const showHighlight = useMemo(() => {
+  const graphPath = useMemo(() => {
+    // TODO: this will be called multiple times
     const path = flowDetail?.dsl?.path ?? [];
-    const idx = path.findIndex((x) => x === target);
+    // The second to last
+    const previousGraphPath: string[] = path.at(-2) ?? [];
+    let graphPath: string[] = path.at(-1) ?? [];
+    // The last of the second to last article
+    const previousLatestElement = previousGraphPath.at(-1);
+    if (previousGraphPath.length > 0 && previousLatestElement) {
+      graphPath = [previousLatestElement, ...graphPath];
+    }
+    return Array.isArray(graphPath) ? graphPath : [];
+  }, [flowDetail.dsl?.path]);
+
+  const highlightStyle = useMemo(() => {
+    const idx = graphPath.findIndex((x) => x === source);
     if (idx !== -1) {
-      let index = idx - 1;
-      while (index >= 0) {
-        if (path[index] === source) {
-          return { strokeWidth: 1, stroke: 'rgb(var(--accent-primary))' };
-        }
-        index--;
+      // The set of elements following source
+      const slicedGraphPath = graphPath.slice(idx + 1);
+      if (slicedGraphPath.some((x) => x === target)) {
+        return { strokeWidth: 1, stroke: 'red' };
       }
-      return {};
     }
     return {};
-  }, [flowDetail?.dsl?.path, source, target]);
+  }, [source, target, graphPath]);
 
   const visible = useMemo(() => {
     return (
       data?.isHovered &&
       sourceHandleId !== NodeHandleId.Tool &&
       sourceHandleId !== NodeHandleId.AgentBottom && // The connection between the agent node and the tool node does not need to display the delete button
-      !target.startsWith(Operator.Tool) &&
-      !isTargetPlaceholder
+      !target.startsWith(Operator.Tool)
     );
-  }, [data?.isHovered, isTargetPlaceholder, sourceHandleId, target]);
+  }, [data?.isHovered, sourceHandleId, target]);
 
   return (
     <>
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
-        style={{
-          ...style,
-          ...selectedStyle,
-          ...showHighlight,
-          ...placeholderHighlightStyle,
-        }}
-        className={cn('text-text-disabled')}
+        style={{ ...style, ...selectedStyle, ...highlightStyle }}
+        className="text-text-secondary"
       />
 
       <EdgeLabelRenderer>
@@ -120,7 +108,7 @@ function InnerButtonEdge({
         >
           <button
             className={cn(
-              'size-3.5 border border-state-error text-state-error rounded-full leading-none bg-bg-canvas outline outline-bg-canvas',
+              'size-3.5 border border-state-error text-state-error rounded-full leading-none',
               'invisible',
               { visible },
             )}

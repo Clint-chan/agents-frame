@@ -53,13 +53,14 @@ const MarkdownToc: React.FC<MarkdownTocProps> = ({ content }) => {
 
   return (
     <div
-      className="markdown-toc bg-bg-base text-text-primary shadow shadow-text-secondary"
+      className="markdown-toc"
       style={{
         position: 'fixed',
         right: 20,
         top: 100,
         bottom: 150,
         width: 200,
+        background: '#fff',
         padding: '10px',
         maxHeight: 'calc(100vh - 170px)',
         overflowY: 'auto',

@@ -35,8 +35,6 @@ from rag.utils.redis_conn import REDIS_CONN
 from api import settings
 from rag.nlp import search
 
-CANVAS_DEBUG_DOC_ID = "dataflow_x"
-GRAPH_RAPTOR_FAKE_DOC_ID = "graph_raptor_x"
 
 def trim_header_by_lines(text: str, max_length) -> str:
     # Trim header text to maximum length while preserving line breaks
@@ -72,7 +70,7 @@ class TaskService(CommonService):
 
     @classmethod
     @DB.connection_context()
-    def get_task(cls, task_id, doc_ids=[]):
+    def get_task(cls, task_id):
         """Retrieve detailed task information by task ID.
 
         This method fetches comprehensive task details including associated document,
@@ -86,10 +84,6 @@ class TaskService(CommonService):
             dict: Task details dictionary containing all task information and related metadata.
                  Returns None if task is not found or has exceeded retry limit.
         """
-        doc_id = cls.model.doc_id
-        if doc_id == CANVAS_DEBUG_DOC_ID and doc_ids:
-            doc_id = doc_ids[0]
-
         fields = [
             cls.model.id,
             cls.model.doc_id,
@@ -115,7 +109,7 @@ class TaskService(CommonService):
         ]
         docs = (
             cls.model.select(*fields)
-                .join(Document, on=(doc_id == Document.id))
+                .join(Document, on=(cls.model.doc_id == Document.id))
                 .join(Knowledgebase, on=(Document.kb_id == Knowledgebase.id))
                 .join(Tenant, on=(Knowledgebase.tenant_id == Tenant.id))
                 .where(cls.model.id == task_id)
@@ -165,7 +159,7 @@ class TaskService(CommonService):
         ]
         tasks = (
             cls.model.select(*fields).order_by(cls.model.from_page.asc(), cls.model.create_time.desc())
-            .where(cls.model.doc_id == doc_id)
+                .where(cls.model.doc_id == doc_id)
         )
         tasks = list(tasks.dicts())
         if not tasks:
@@ -205,18 +199,18 @@ class TaskService(CommonService):
                 cls.model.select(
                     *[Document.id, Document.kb_id, Document.location, File.parent_id]
                 )
-                .join(Document, on=(cls.model.doc_id == Document.id))
-                .join(
+                    .join(Document, on=(cls.model.doc_id == Document.id))
+                    .join(
                     File2Document,
                     on=(File2Document.document_id == Document.id),
                     join_type=JOIN.LEFT_OUTER,
                 )
-                .join(
+                    .join(
                     File,
                     on=(File2Document.file_id == File.id),
                     join_type=JOIN.LEFT_OUTER,
                 )
-                .where(
+                    .where(
                     Document.status == StatusEnum.VALID.value,
                     Document.run == TaskStatus.RUNNING.value,
                     ~(Document.type == FileType.VIRTUAL.value),
@@ -294,33 +288,25 @@ class TaskService(CommonService):
                 cls.model.update(progress=prog).where(
                     (cls.model.id == id) &
                     (
-                            (cls.model.progress != -1) &
-                            ((prog == -1) | (prog > cls.model.progress))
+                        (cls.model.progress != -1) &
+                        ((prog == -1) | (prog > cls.model.progress))
                     )
                 ).execute()
-        else:
-            with DB.lock("update_progress", -1):
-                if info["progress_msg"]:
-                    progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
-                    cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
-                if "progress" in info:
-                    prog = info["progress"]
-                    cls.model.update(progress=prog).where(
-                        (cls.model.id == id) &
-                        (
-                            (cls.model.progress != -1) &
-                            ((prog == -1) | (prog > cls.model.progress))
-                        )
-                    ).execute()
+            return
 
-        process_duration = (datetime.now() - task.begin_at).total_seconds()
-        cls.model.update(process_duration=process_duration).where(cls.model.id == id).execute()
-
-    @classmethod
-    @DB.connection_context()
-    def delete_by_doc_ids(cls, doc_ids):
-        """Delete task associated with a document."""
-        return cls.model.delete().where(cls.model.doc_id.in_(doc_ids)).execute()
+        with DB.lock("update_progress", -1):
+            if info["progress_msg"]:
+                progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
+                cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
+            if "progress" in info:
+                prog = info["progress"]
+                cls.model.update(progress=prog).where(
+                    (cls.model.id == id) &
+                    (
+                        (cls.model.progress != -1) &
+                        ((prog == -1) | (prog > cls.model.progress))
+                    )
+                ).execute()
 
 
 def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
@@ -343,16 +329,8 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
         - Task digests are calculated for optimization and reuse
         - Previous task chunks may be reused if available
     """
-
     def new_task():
-        return {
-            "id": get_uuid(),
-            "doc_id": doc["id"],
-            "progress": 0.0,
-            "from_page": 0,
-            "to_page": 100000000,
-            "begin_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
+        return {"id": get_uuid(), "doc_id": doc["id"], "progress": 0.0, "from_page": 0, "to_page": 100000000}
 
     parse_task_array = []
 
@@ -365,7 +343,7 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
         page_size = doc["parser_config"].get("task_page_size") or 12
         if doc["parser_id"] == "paper":
             page_size = doc["parser_config"].get("task_page_size") or 22
-        if doc["parser_id"] in ["one", "knowledge_graph"] or do_layout != "DeepDOC" or doc["parser_config"].get("toc", True):
+        if doc["parser_id"] in ["one", "knowledge_graph"] or do_layout != "DeepDOC":
             page_size = 10 ** 9
         page_ranges = doc["parser_config"].get("pages") or [(1, 10 ** 5)]
         for s, e in page_ranges:
@@ -494,29 +472,36 @@ def has_canceled(task_id):
     return False
 
 
-def queue_dataflow(tenant_id:str, flow_id:str, task_id:str, doc_id:str=CANVAS_DEBUG_DOC_ID, file:dict=None, priority: int=0, rerun:bool=False) -> tuple[bool, str]:
+def queue_dataflow(dsl:str, tenant_id:str, doc_id:str, task_id:str, flow_id:str, priority: int, callback=None) -> tuple[bool, str]:
+    """
+    Returns a tuple (success: bool, error_message: str).
+    """
+    _ = callback
 
     task = dict(
-        id=task_id,
-        doc_id=doc_id,
-        from_page=0,
-        to_page=100000000,
-        task_type="dataflow" if not rerun else "dataflow_rerun",
-        priority=priority,
-        begin_at= datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    id=get_uuid() if not task_id else task_id,
+    doc_id=doc_id,
+    from_page=0,
+    to_page=100000000,
+    task_type="dataflow",
+    priority=priority,
     )
-    if doc_id not in [CANVAS_DEBUG_DOC_ID, GRAPH_RAPTOR_FAKE_DOC_ID]:
-        TaskService.model.delete().where(TaskService.model.doc_id == doc_id).execute()
-        DocumentService.begin2parse(doc_id)
+
+    TaskService.model.delete().where(TaskService.model.id == task["id"]).execute()
     bulk_insert_into_db(model=Task, data_source=[task], replace_on_conflict=True)
 
-    task["kb_id"] = DocumentService.get_knowledgebase_id(doc_id)
+    kb_id = DocumentService.get_knowledgebase_id(doc_id)
+    if not kb_id:
+        return False, f"Can't find KB of this document: {doc_id}"
+
+    task["kb_id"] = kb_id
     task["tenant_id"] = tenant_id
-    task["dataflow_id"] = flow_id
-    task["file"] = file
+    task["task_type"] = "dataflow"
+    task["dsl"] = dsl
+    task["dataflow_id"] = get_uuid() if not flow_id else flow_id
 
     if not REDIS_CONN.queue_product(
-            get_svr_queue_name(priority), message=task
+        get_svr_queue_name(priority), message=task
     ):
         return False, "Can't access Redis. Please check the Redis' status."
 

@@ -45,25 +45,7 @@ export type SelectWithSearchFlagProps = {
   onChange?(value: string): void;
   triggerClassName?: string;
   allowClear?: boolean;
-  disabled?: boolean;
-  placeholder?: string;
 };
-
-function findLabelWithoutOptions(
-  options: SelectWithSearchFlagOptionType[],
-  value: string,
-) {
-  return options.find((opt) => opt.value === value)?.label || '';
-}
-
-function findLabelWithOptions(
-  options: SelectWithSearchFlagOptionType[],
-  value: string,
-) {
-  return options
-    .map((group) => group?.options?.find((item) => item.value === value))
-    .filter(Boolean)[0]?.label;
-}
 
 export const SelectWithSearch = forwardRef<
   React.ElementRef<typeof Button>,
@@ -76,36 +58,12 @@ export const SelectWithSearch = forwardRef<
       options = [],
       triggerClassName,
       allowClear = false,
-      disabled = false,
-      placeholder = t('common.selectPlaceholder'),
     },
     ref,
   ) => {
     const id = useId();
     const [open, setOpen] = useState<boolean>(false);
     const [value, setValue] = useState<string>('');
-
-    const selectLabel = useMemo(() => {
-      if (options.every((x) => x.options === undefined)) {
-        return findLabelWithoutOptions(options, value);
-      } else if (options.every((x) => Array.isArray(x.options))) {
-        return findLabelWithOptions(options, value);
-      } else {
-        // Some have options, some don't
-        const optionsWithOptions = options.filter((x) =>
-          Array.isArray(x.options),
-        );
-        const optionsWithoutOptions = options.filter(
-          (x) => x.options === undefined,
-        );
-
-        const label = findLabelWithOptions(optionsWithOptions, value);
-        if (label) {
-          return label;
-        }
-        return findLabelWithoutOptions(optionsWithoutOptions, value);
-      }
-    }, [options, value]);
 
     const handleSelect = useCallback(
       (val: string) => {
@@ -128,7 +86,16 @@ export const SelectWithSearch = forwardRef<
     useEffect(() => {
       setValue(val);
     }, [val]);
-
+    const selectLabel = useMemo(() => {
+      const optionTemp = options[0];
+      if (optionTemp?.options) {
+        return options
+          .map((group) => group?.options?.find((item) => item.value === value))
+          .filter(Boolean)[0]?.label;
+      } else {
+        return options.find((opt) => opt.value === value)?.label || '';
+      }
+    }, [options, value]);
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -138,7 +105,6 @@ export const SelectWithSearch = forwardRef<
             role="combobox"
             aria-expanded={open}
             ref={ref}
-            disabled={disabled}
             className={cn(
               'bg-background hover:bg-background border-input w-full  justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px] [&_svg]:pointer-events-auto',
               triggerClassName,
@@ -149,7 +115,9 @@ export const SelectWithSearch = forwardRef<
                 <span className="leading-none truncate">{selectLabel}</span>
               </span>
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground">
+                {t('common.selectPlaceholder')}
+              </span>
             )}
             <div className="flex items-center justify-between">
               {value && allowClear && (

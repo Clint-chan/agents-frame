@@ -16,14 +16,13 @@
 import io
 import sys
 import threading
-
 import pdfplumber
 
 from .ocr import OCR
 from .recognizer import Recognizer
-from .layout_recognizer import AscendLayoutRecognizer
 from .layout_recognizer import LayoutRecognizer4YOLOv10 as LayoutRecognizer
 from .table_structure_recognizer import TableStructureRecognizer
+
 
 LOCK_KEY_pdfplumber = "global_shared_lock_pdfplumber"
 if LOCK_KEY_pdfplumber not in sys.modules:
@@ -31,13 +30,10 @@ if LOCK_KEY_pdfplumber not in sys.modules:
 
 
 def init_in_out(args):
+    from PIL import Image
     import os
     import traceback
-
-    from PIL import Image
-
     from api.utils.file_utils import traversal_files
-
     images = []
     outputs = []
 
@@ -48,7 +44,8 @@ def init_in_out(args):
         nonlocal outputs, images
         with sys.modules[LOCK_KEY_pdfplumber]:
             pdf = pdfplumber.open(fnm)
-            images = [p.to_image(resolution=72 * zoomin).annotated for i, p in enumerate(pdf.pages)]
+            images = [p.to_image(resolution=72 * zoomin).annotated for i, p in
+                                enumerate(pdf.pages)]
 
         for i, page in enumerate(images):
             outputs.append(os.path.split(fnm)[-1] + f"_{i}.jpg")
@@ -60,10 +57,10 @@ def init_in_out(args):
             pdf_pages(fnm)
             return
         try:
-            fp = open(fnm, "rb")
+            fp = open(fnm, 'rb')
             binary = fp.read()
             fp.close()
-            images.append(Image.open(io.BytesIO(binary)).convert("RGB"))
+            images.append(Image.open(io.BytesIO(binary)).convert('RGB'))
             outputs.append(os.path.split(fnm)[-1])
         except Exception:
             traceback.print_exc()
@@ -84,7 +81,6 @@ __all__ = [
     "OCR",
     "Recognizer",
     "LayoutRecognizer",
-    "AscendLayoutRecognizer",
     "TableStructureRecognizer",
     "init_in_out",
 ]

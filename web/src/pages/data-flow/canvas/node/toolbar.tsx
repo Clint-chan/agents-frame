@@ -11,6 +11,7 @@ import {
   PropsWithChildren,
   useCallback,
 } from 'react';
+import { Operator } from '../../constant';
 import { useDuplicateNode } from '../../hooks';
 import useGraphStore from '../../store';
 
@@ -27,7 +28,6 @@ type ToolBarProps = {
   label: string;
   id: string;
   showRun?: boolean;
-  showCopy?: boolean;
 } & PropsWithChildren;
 
 export function ToolBar({
@@ -35,17 +35,23 @@ export function ToolBar({
   children,
   label,
   id,
-  showRun = false,
-  showCopy = true,
+  showRun = true,
 }: ToolBarProps) {
   const deleteNodeById = useGraphStore((store) => store.deleteNodeById);
+  const deleteIterationNodeById = useGraphStore(
+    (store) => store.deleteIterationNodeById,
+  );
 
   const deleteNode: MouseEventHandler<HTMLDivElement> = useCallback(
     (e) => {
       e.stopPropagation();
-      deleteNodeById(id);
+      if (label === Operator.Iteration) {
+        deleteIterationNodeById(id);
+      } else {
+        deleteNodeById(id);
+      }
     },
-    [deleteNodeById, id],
+    [deleteIterationNodeById, deleteNodeById, id, label],
   );
 
   const duplicateNode = useDuplicateNode();
@@ -68,13 +74,10 @@ export function ToolBar({
             <IconWrapper>
               <Play className="size-3.5" data-play />
             </IconWrapper>
-          )}
-          {showCopy && (
-            <IconWrapper onClick={handleDuplicate}>
-              <Copy className="size-3.5" />
-            </IconWrapper>
-          )}
-
+          )}{' '}
+          <IconWrapper onClick={handleDuplicate}>
+            <Copy className="size-3.5" />
+          </IconWrapper>
           <IconWrapper onClick={deleteNode}>
             <Trash2 className="size-3.5" />
           </IconWrapper>

@@ -15,36 +15,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import message from '@/components/ui/message';
 import { useSetModalState } from '@/hooks/common-hooks';
 import { useNavigatePage } from '@/hooks/logic-hooks/navigate-hooks';
 import { ReactFlowProvider } from '@xyflow/react';
 import {
   ChevronDown,
   CirclePlay,
+  Download,
   History,
   LaptopMinimalCheck,
   Settings,
   Upload,
 } from 'lucide-react';
-import { ComponentPropsWithoutRef, useCallback, useState } from 'react';
+import { ComponentPropsWithoutRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import DataFlowCanvas from './canvas';
+import AgentCanvas from './canvas';
 import { DropdownProvider } from './canvas/context';
-import { Operator } from './constant';
-import { LogContext } from './context';
-import { useCancelCurrentDataflow } from './hooks/use-cancel-dataflow';
 import { useHandleExportOrImportJsonFile } from './hooks/use-export-json';
 import { useFetchDataOnMount } from './hooks/use-fetch-data';
-import { useFetchLog } from './hooks/use-fetch-log';
+import { useGetBeginNodeDataInputs } from './hooks/use-get-begin-query';
 import {
   useSaveGraph,
   useSaveGraphBeforeOpeningDebugDrawer,
   useWatchAgentChange,
 } from './hooks/use-save-graph';
-import { LogSheet } from './log-sheet';
 import { SettingDialog } from './setting-dialog';
-import useGraphStore from './store';
+import { UploadAgentDialog } from './upload-agent-dialog';
 import { useAgentHistoryManager } from './use-agent-history-manager';
 import { VersionDialog } from './version-dialog';
 
@@ -68,12 +64,24 @@ export default function DataFlow() {
   } = useSetModalState();
   const { t } = useTranslation();
   useAgentHistoryManager();
-  const { handleExportJson } = useHandleExportOrImportJsonFile();
+  const {
+    handleExportJson,
+    handleImportJson,
+    fileUploadVisible,
+    onFileUploadOk,
+    hideFileUploadModal,
+  } = useHandleExportOrImportJsonFile();
   const { saveGraph, loading } = useSaveGraph();
   const { flowDetail: agentDetail } = useFetchDataOnMount();
-  const { handleRun, loading: running } =
-    useSaveGraphBeforeOpeningDebugDrawer(showChatDrawer);
-
+  const inputs = useGetBeginNodeDataInputs();
+  const { handleRun } = useSaveGraphBeforeOpeningDebugDrawer(showChatDrawer);
+  const handleRunAgent = useCallback(() => {
+    if (inputs.length > 0) {
+      showChatDrawer();
+    } else {
+      handleRun();
+    }
+  }, [handleRun, inputs, showChatDrawer]);
   const {
     visible: versionDialogVisible,
     hideModal: hideVersionDialog,
@@ -85,46 +93,6 @@ export default function DataFlow() {
     hideModal: hideSettingDialog,
     showModal: showSettingDialog,
   } = useSetModalState();
-
-  const {
-    visible: logSheetVisible,
-    showModal: showLogSheet,
-    hideModal: hideLogSheet,
-  } = useSetModalState();
-
-  const {
-    isParsing,
-    logs,
-    messageId,
-    setMessageId,
-    isCompleted,
-    stopFetchTrace,
-    isLogEmpty,
-  } = useFetchLog(logSheetVisible);
-
-  const [uploadedFileData, setUploadedFileData] =
-    useState<Record<string, any>>();
-  const findNodeByName = useGraphStore((state) => state.findNodeByName);
-
-  const handleRunAgent = useCallback(() => {
-    if (!findNodeByName(Operator.Tokenizer)) {
-      message.warning(t('dataflow.tokenizerRequired'));
-      return;
-    }
-
-    if (isParsing) {
-      // show log sheet
-      showLogSheet();
-    } else {
-      hideLogSheet();
-      handleRun();
-    }
-  }, [findNodeByName, handleRun, hideLogSheet, isParsing, showLogSheet, t]);
-
-  const { handleCancel } = useCancelCurrentDataflow({
-    messageId,
-    stopFetchTrace,
-  });
 
   const time = useWatchAgentChange(chatDrawerVisible);
 
@@ -157,23 +125,15 @@ export default function DataFlow() {
           >
             <LaptopMinimalCheck /> {t('flow.save')}
           </ButtonLoading>
-          <ButtonLoading
-            variant={'secondary'}
-            onClick={handleRunAgent}
-            loading={running}
-          >
-            <CirclePlay className={isParsing ? 'animate-spin' : ''} />
-
-            {isParsing || running ? t('dataflow.running') : t('flow.run')}
-          </ButtonLoading>
+          <Button variant={'secondary'} onClick={handleRunAgent}>
+            <CirclePlay />
+            {t('flow.run')}
+          </Button>
           <Button variant={'secondary'} onClick={showVersionDialog}>
             <History />
             {t('flow.historyversion')}
           </Button>
-          {/* <Button variant={'secondary'}>
-            <Send />
-            {t('flow.release')}
-          </Button> */}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant={'secondary'}>
@@ -181,6 +141,11 @@ export default function DataFlow() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <AgentDropdownMenuItem onClick={handleImportJson}>
+                <Download />
+                {t('flow.import')}
+              </AgentDropdownMenuItem>
+              <DropdownMenuSeparator />
               <AgentDropdownMenuItem onClick={handleExportJson}>
                 <Upload />
                 {t('flow.export')}
@@ -194,19 +159,21 @@ export default function DataFlow() {
           </DropdownMenu>
         </div>
       </PageHeader>
-      <LogContext.Provider
-        value={{ messageId, setMessageId, setUploadedFileData }}
-      >
-        <ReactFlowProvider>
-          <DropdownProvider>
-            <DataFlowCanvas
-              drawerVisible={chatDrawerVisible}
-              hideDrawer={hideChatDrawer}
-              showLogSheet={showLogSheet}
-            ></DataFlowCanvas>
-          </DropdownProvider>
-        </ReactFlowProvider>
-      </LogContext.Provider>
+      <ReactFlowProvider>
+        <DropdownProvider>
+          <AgentCanvas
+            drawerVisible={chatDrawerVisible}
+            hideDrawer={hideChatDrawer}
+          ></AgentCanvas>
+        </DropdownProvider>
+      </ReactFlowProvider>
+      {fileUploadVisible && (
+        <UploadAgentDialog
+          hideModal={hideFileUploadModal}
+          onOk={onFileUploadOk}
+        ></UploadAgentDialog>
+      )}
+
       {versionDialogVisible && (
         <DropdownProvider>
           <VersionDialog hideModal={hideVersionDialog}></VersionDialog>
@@ -214,18 +181,6 @@ export default function DataFlow() {
       )}
       {settingDialogVisible && (
         <SettingDialog hideModal={hideSettingDialog}></SettingDialog>
-      )}
-      {logSheetVisible && (
-        <LogSheet
-          hideModal={hideLogSheet}
-          isParsing={isParsing}
-          isCompleted={isCompleted}
-          isLogEmpty={isLogEmpty}
-          logs={logs}
-          handleCancel={handleCancel}
-          messageId={messageId}
-          uploadedFileData={uploadedFileData}
-        ></LogSheet>
       )}
     </section>
   );

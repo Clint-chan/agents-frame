@@ -8,7 +8,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { DialogProps } from '@radix-ui/react-dialog';
+import { PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface IProps {
@@ -24,10 +24,7 @@ export function ConfirmDeleteDialog({
   onOk,
   onCancel,
   hidden = false,
-  onOpenChange,
-  open,
-  defaultOpen,
-}: IProps & DialogProps) {
+}: IProps & PropsWithChildren) {
   const { t } = useTranslation();
 
   if (hidden) {
@@ -35,11 +32,7 @@ export function ConfirmDeleteDialog({
   }
 
   return (
-    <AlertDialog
-      onOpenChange={onOpenChange}
-      open={open}
-      defaultOpen={defaultOpen}
-    >
+    <AlertDialog>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent
         onSelect={(e) => e.preventDefault()}
@@ -56,13 +49,13 @@ export function ConfirmDeleteDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>
-            {t('common.no')}
+            {t('common.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             className="bg-state-error text-text-primary"
             onClick={onOk}
           >
-            {t('common.yes')}
+            {t('common.ok')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

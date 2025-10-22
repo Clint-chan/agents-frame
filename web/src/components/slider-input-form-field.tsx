@@ -1,6 +1,6 @@
 import { FormLayout } from '@/constants/form';
 import { cn } from '@/lib/utils';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { SingleFormSlider } from './ui/dual-range-slider';
 import {
@@ -36,11 +36,11 @@ export function SliderInputFormField({
   tooltip,
   defaultValue,
   className,
-  layout = FormLayout.Horizontal,
+  layout = FormLayout.Vertical,
 }: SliderInputFormFieldProps) {
   const form = useFormContext();
 
-  const isHorizontal = useMemo(() => layout !== FormLayout.Vertical, [layout]);
+  const isHorizontal = layout === FormLayout.Horizontal;
 
   return (
     <FormField
@@ -54,7 +54,8 @@ export function SliderInputFormField({
           <FormLabel
             tooltip={tooltip}
             className={cn({
-              'text-sm whitespace-break-spaces w-1/4': isHorizontal,
+              'text-sm text-muted-foreground whitespace-break-spaces w-1/4':
+                isHorizontal,
             })}
           >
             {label}

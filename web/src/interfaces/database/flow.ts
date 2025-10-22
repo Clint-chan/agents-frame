@@ -46,7 +46,6 @@ export declare interface IFlow {
 export interface IFlowTemplate {
   avatar: string;
   canvas_type: string;
-  canvas_category?: string;
   create_date: string;
   create_time: number;
   description: {
@@ -161,7 +160,7 @@ export type IIterationNode = BaseNode;
 export type IIterationStartNode = BaseNode;
 export type IKeywordNode = BaseNode;
 export type ICodeNode = BaseNode<ICodeForm>;
-export type IAgentNode<T = any> = BaseNode<T>;
+export type IAgentNode = BaseNode;
 
 export type RAGFlowNodeType =
   | IBeginNode

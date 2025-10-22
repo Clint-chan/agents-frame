@@ -1,11 +1,9 @@
 import { LlmModelType } from '@/constants/knowledge';
 import { useTranslate } from '@/hooks/common-hooks';
 import { useSelectLlmOptionsByModelType } from '@/hooks/llm-hooks';
-import { cn } from '@/lib/utils';
 import { camelCase } from 'lodash';
-import { ReactNode, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { SelectWithSearch } from './originui/select-with-search';
 import {
   FormControl,
   FormField,
@@ -13,40 +11,24 @@ import {
   FormLabel,
   FormMessage,
 } from './ui/form';
+import { RAGFlowSelect } from './ui/select';
 
-export const enum ParseDocumentType {
+export const enum DocumentType {
   DeepDOC = 'DeepDOC',
   PlainText = 'Plain Text',
-  MinerU = 'MinerU',
 }
 
-export function LayoutRecognizeFormField({
-  name = 'parser_config.layout_recognize',
-  horizontal = true,
-  optionsWithoutLLM,
-  label,
-}: {
-  name?: string;
-  horizontal?: boolean;
-  optionsWithoutLLM?: { value: string; label: string }[];
-  label?: ReactNode;
-}) {
+export function LayoutRecognizeFormField() {
   const form = useFormContext();
 
   const { t } = useTranslate('knowledgeDetails');
   const allOptions = useSelectLlmOptionsByModelType();
 
   const options = useMemo(() => {
-    const list = optionsWithoutLLM
-      ? optionsWithoutLLM
-      : [
-          ParseDocumentType.DeepDOC,
-          ParseDocumentType.PlainText,
-          ParseDocumentType.MinerU,
-        ].map((x) => ({
-          label: x === ParseDocumentType.PlainText ? t(camelCase(x)) : x,
-          value: x,
-        }));
+    const list = [DocumentType.DeepDOC, DocumentType.PlainText].map((x) => ({
+      label: x === DocumentType.PlainText ? t(camelCase(x)) : 'DeepDoc',
+      value: x,
+    }));
 
     const image2TextList = allOptions[LlmModelType.Image2text].map((x) => {
       return {
@@ -66,40 +48,38 @@ export function LayoutRecognizeFormField({
     });
 
     return [...list, ...image2TextList];
-  }, [allOptions, optionsWithoutLLM, t]);
+  }, [allOptions, t]);
 
   return (
     <FormField
       control={form.control}
-      name={name}
+      name="parser_config.layout_recognize"
       render={({ field }) => {
+        if (typeof field.value === 'undefined') {
+          // default value set
+          form.setValue(
+            'parser_config.layout_recognize',
+            form.formState.defaultValues?.parser_config?.layout_recognize ??
+              'DeepDOC',
+          );
+        }
         return (
-          <FormItem className={'items-center space-y-0 '}>
-            <div
-              className={cn('flex', {
-                'flex-col ': !horizontal,
-                'items-center': horizontal,
-              })}
-            >
+          <FormItem className=" items-center space-y-0 ">
+            <div className="flex items-center">
               <FormLabel
                 tooltip={t('layoutRecognizeTip')}
-                className={cn('text-sm text-text-secondary whitespace-wrap', {
-                  ['w-1/4']: horizontal,
-                })}
+                className="text-sm text-muted-foreground whitespace-wrap w-1/4"
               >
-                {label || t('layoutRecognize')}
+                {t('layoutRecognize')}
               </FormLabel>
-              <div className={horizontal ? 'w-3/4' : 'w-full'}>
+              <div className="w-3/4">
                 <FormControl>
-                  <SelectWithSearch
-                    {...field}
-                    options={options}
-                  ></SelectWithSearch>
+                  <RAGFlowSelect {...field} options={options}></RAGFlowSelect>
                 </FormControl>
               </div>
             </div>
             <div className="flex pt-1">
-              <div className={horizontal ? 'w-1/4' : 'w-full'}></div>
+              <div className="w-1/4"></div>
               <FormMessage />
             </div>
           </FormItem>

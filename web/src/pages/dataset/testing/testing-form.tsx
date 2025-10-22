@@ -12,11 +12,11 @@ import {
   topKSchema,
 } from '@/components/rerank';
 import {
+  initialKeywordsSimilarityWeightValue,
   initialSimilarityThresholdValue,
-  initialVectorSimilarityWeightValue,
+  keywordsSimilarityWeightSchema,
   SimilaritySliderFormField,
   similarityThresholdSchema,
-  vectorSimilarityWeightSchema,
 } from '@/components/similarity-slider';
 import { ButtonLoading } from '@/components/ui/button';
 import {
@@ -52,18 +52,16 @@ export default function TestingForm({
       message: t('knowledgeDetails.testTextPlaceholder'),
     }),
     ...similarityThresholdSchema,
-    ...vectorSimilarityWeightSchema,
+    ...keywordsSimilarityWeightSchema,
     ...topKSchema,
-    use_kg: z.boolean().optional(),
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       ...initialSimilarityThresholdValue,
-      ...initialVectorSimilarityWeightValue,
+      ...initialKeywordsSimilarityWeightValue,
       ...initialTopKValue,
-      use_kg: false,
     },
   });
 
@@ -84,6 +82,7 @@ export default function TestingForm({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormContainer className="p-10">
           <SimilaritySliderFormField
+            vectorSimilarityWeightName="keywords_similarity_weight"
             isTooltipShown={true}
           ></SimilaritySliderFormField>
           <RerankFormFields></RerankFormFields>

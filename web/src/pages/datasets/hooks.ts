@@ -2,6 +2,7 @@ import { useSetModalState } from '@/hooks/common-hooks';
 import { useNavigatePage } from '@/hooks/logic-hooks/navigate-hooks';
 import { useCreateKnowledge } from '@/hooks/use-knowledge-request';
 import { useCallback, useState } from 'react';
+
 export const useSearchKnowledge = () => {
   const [searchString, setSearchString] = useState<string>('');
 
@@ -14,19 +15,16 @@ export const useSearchKnowledge = () => {
   };
 };
 
-export interface Iknowledge {
-  name: string;
-  embd_id: string;
-  parser_id: string;
-}
 export const useSaveKnowledge = () => {
   const { visible: visible, hideModal, showModal } = useSetModalState();
   const { loading, createKnowledge } = useCreateKnowledge();
   const { navigateToDataset } = useNavigatePage();
 
   const onCreateOk = useCallback(
-    async (data: Iknowledge) => {
-      const ret = await createKnowledge(data);
+    async (name: string) => {
+      const ret = await createKnowledge({
+        name,
+      });
 
       if (ret?.code === 0) {
         hideModal();

@@ -5,20 +5,16 @@ export function useHandleClickConversationCard() {
   const [controller, setController] = useState(new AbortController());
   const { handleClickConversation } = useClickConversationCard();
 
-  const stopOutputMessage = useCallback(() => {
-    setController((pre) => {
-      pre.abort();
-      return new AbortController();
-    });
-  }, []);
-
   const handleConversationCardClick = useCallback(
     (conversationId: string, isNew: boolean) => {
       handleClickConversation(conversationId, isNew ? 'true' : '');
-      stopOutputMessage();
+      setController((pre) => {
+        pre.abort();
+        return new AbortController();
+      });
     },
-    [handleClickConversation, stopOutputMessage],
+    [handleClickConversation],
   );
 
-  return { controller, handleConversationCardClick, stopOutputMessage };
+  return { controller, handleConversationCardClick };
 }

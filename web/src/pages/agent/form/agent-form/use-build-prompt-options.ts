@@ -1,8 +1,6 @@
 import { useFetchPrompt } from '@/hooks/use-agent-request';
-import { Edge } from '@xyflow/react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { hasSubAgentOrTool } from '../../utils';
 
 export const PromptIdentity = 'RAGFlow-Prompt';
 
@@ -13,28 +11,16 @@ function wrapPromptWithTag(text: string, tag: string) {
 </${capitalTag}>`;
 }
 
-export function useBuildPromptExtraPromptOptions(
-  edges: Edge[],
-  nodeId?: string,
-) {
+export function useBuildPromptExtraPromptOptions() {
   const { data: prompts } = useFetchPrompt();
   const { t } = useTranslation();
-  const has = hasSubAgentOrTool(edges, nodeId);
 
   const options = useMemo(() => {
-    return Object.entries(prompts || {})
-      .map(([key, value]) => ({
-        label: key,
-        value: wrapPromptWithTag(value, key),
-        icon: null,
-      }))
-      .filter((x) => {
-        if (!has) {
-          return x.label === 'citation_guidelines';
-        }
-        return true;
-      });
-  }, [has, prompts]);
+    return Object.entries(prompts || {}).map(([key, value]) => ({
+      label: key,
+      value: wrapPromptWithTag(value, key),
+    }));
+  }, [prompts]);
 
   const extraOptions = [
     { label: PromptIdentity, title: t('flow.frameworkPrompts'), options },

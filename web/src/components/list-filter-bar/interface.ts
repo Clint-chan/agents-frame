@@ -1,7 +1,7 @@
 export type FilterType = {
   id: string;
-  label: string | JSX.Element;
-  count?: number;
+  label: string;
+  count: number;
 };
 
 export type FilterCollection = {
